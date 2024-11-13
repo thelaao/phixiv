@@ -31,7 +31,7 @@ impl TryFrom<RawArtworkPath> for ArtworkPath {
 
     fn try_from(value: RawArtworkPath) -> Result<Self, Self::Error> {
         let image_index = match value.image_index {
-            Some(index) => Some(index.parse()?),
+            Some(index) => Some(index.chars().take_while(|c| c.is_numeric()).collect::<String>().parse()?),
             None => None,
         };
 
