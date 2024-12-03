@@ -25,3 +25,9 @@ A simple API for basic information such as tags and direct image links is provid
 ```text
 /api/info?id=<id>&language=<language>
 ```
+
+### Examples
+
+- Arwork with ID 124748386: https://www.phixiv.net/artworks/124748386
+- Second image of the same artwork: https://www.phixiv.net/artworks/124748386/2
+- Same artwork with the tags translated to english: https://www.phixiv.net/en/artworks/124748386
