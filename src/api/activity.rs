@@ -7,6 +7,7 @@ use axum::{
 use chrono::DateTime;
 use serde::{Deserialize, Serialize};
 use tokio::sync::RwLock;
+use itertools::Itertools;
 
 use crate::{
     helper::PhixivError,
@@ -98,23 +99,39 @@ pub struct Account {
 impl ActivityResponse {
     fn new(
         id: String,
-        url: String,
         created_at: String,
-        content: String,
         media_attachment_url: String,
-        account_id: String,
-        account_display_name: String,
-        account_avatar: Option<String>,
+        listing: ArtworkListing,
     ) -> Self {
+        let tag_string = Itertools::intersperse_with(listing.tags.into_iter(), || String::from(", "))
+            .collect::<String>();
+
+        let description = Itertools::intersperse_with(
+            [
+                format!("<h1>{}</h1>", listing.title),
+                String::from(if listing.ai_generated {
+                    "AI Generated\n"
+                } else {
+                    ""
+                }),
+                listing.description,
+                tag_string.clone(),
+            ]
+            .into_iter()
+            .filter(|s| !s.is_empty()),
+            || String::from("\n"),
+        )
+        .collect::<String>();
+
         Self {
             id: id.clone(),
-            url: url.clone(),
-            uri: url.clone(),
+            url: listing.url.clone(),
+            uri: listing.url.clone(),
             created_at: created_at.clone(),
             edited_at: None,
             reblog: None,
             language: "en".to_string(),
-            content,
+            content: description,
             spoiler_text: "".to_string(),
             visibility: "public".to_string(),
             application: Application {
@@ -133,20 +150,20 @@ impl ActivityResponse {
                 meta: serde_json::json!({}),
             }],
             account: Account {
-                id: account_id,
-                display_name: account_display_name.clone(),
-                username: account_display_name.clone(),
-                acct: account_display_name,
-                url: url.clone(),
-                uri: url,
+                id: listing.author_id,
+                display_name: listing.author_name.clone(),
+                username: listing.author_name.clone(),
+                acct: listing.author_name,
+                url: listing.url.clone(),
+                uri: listing.url,
                 created_at,
                 locked: false,
                 bot: false,
                 discoverable: true,
                 indexable: false,
                 group: false,
-                avatar: account_avatar.clone(),
-                avatar_static: account_avatar,
+                avatar: listing.profile_image_url.clone(),
+                avatar_static: listing.profile_image_url,
                 header: None,
                 header_static: None,
                 followers_count: 0,
@@ -191,12 +208,8 @@ pub async fn activity_handler(
 
     Ok(Json(ActivityResponse::new(
         path.id,
-        listing.url,
         created_at,
-        listing.description,
         image_url,
-        listing.author_id,
-        listing.author_name,
-        listing.profile_image_url,
+        listing,
     )))
 }
