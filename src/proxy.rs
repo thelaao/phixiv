@@ -4,7 +4,6 @@ use axum::{
     body::StreamBody,
     extract::{Path, State},
     headers::CacheControl,
-    middleware,
     response::IntoResponse,
     routing::get,
     Router, TypedHeader,
@@ -13,7 +12,7 @@ use tokio::sync::RwLock;
 
 use crate::{
     helper::{self, PhixivError},
-    state::{authorized_middleware, PhixivState},
+    state::PhixivState,
 };
 
 async fn proxy_handler(
@@ -44,5 +43,5 @@ async fn proxy_handler(
 pub fn proxy_router(state: Arc<RwLock<PhixivState>>) -> Router<Arc<RwLock<PhixivState>>> {
     Router::new()
         .route("/*path", get(proxy_handler))
-        .layer(middleware::from_fn_with_state(state, authorized_middleware))
+        .with_state(state)
 }

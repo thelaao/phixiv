@@ -26,7 +26,6 @@ pub(super) async fn artwork_info_handler(
         ArtworkListing::get_listing(
             path.language,
             path.id,
-            &state.auth.access_token,
             &host,
             &state.client,
         )

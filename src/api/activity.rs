@@ -177,7 +177,6 @@ pub async fn activity_handler(
     let listing = ArtworkListing::get_listing(
         query.language,
         path.id.clone(),
-        &state.auth.access_token,
         &host,
         &state.client,
     )

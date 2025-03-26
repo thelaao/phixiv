@@ -3,33 +3,6 @@ use std::collections::HashMap;
 use serde::Deserialize;
 
 #[derive(Debug, Deserialize)]
-pub(super) struct AppReponse {
-    pub illust: IllustrationResponse,
-}
-
-#[derive(Debug, Deserialize)]
-pub(super) struct IllustrationResponse {
-    pub image_urls: ImageUrls,
-    pub meta_pages: Vec<MetaPage>,
-    pub illust_ai_type: u8,
-}
-
-#[derive(Debug, Deserialize)]
-pub(super) struct MetaPage {
-    pub image_urls: MetaPageImageUrls,
-}
-
-#[derive(Debug, Deserialize)]
-pub(super) struct MetaPageImageUrls {
-    pub large: String,
-}
-
-#[derive(Debug, Deserialize)]
-pub(super) struct ImageUrls {
-    pub large: String,
-}
-
-#[derive(Debug, Deserialize)]
 pub(super) struct AjaxResponse {
     pub body: AjaxBody,
 }
@@ -39,6 +12,7 @@ pub(super) struct AjaxBody {
     pub title: String,
     pub description: String,
     pub tags: Tags,
+    pub urls: Urls,
     #[serde(rename = "userId")]
     pub author_id: String,
     #[serde(rename = "userName")]
@@ -51,6 +25,10 @@ pub(super) struct AjaxBody {
     pub create_date: String,
     #[serde(rename = "userIllusts")]
     pub user_illusts: HashMap<String, Option<UserIllust>>,
+    #[serde(rename = "pageCount")]
+    pub page_count: u32,
+    #[serde(rename = "aiType")]
+    pub ai_type: u8,
 }
 
 #[derive(Debug, Deserialize)]
@@ -78,4 +56,10 @@ pub(super) struct AjaxMeta {
 pub(super) struct UserIllust {
     #[serde(rename = "profileImageUrl")]
     pub profile_image_url: Option<String>,
+}
+
+#[derive(Deserialize, Debug)]
+pub(super) struct Urls {
+    pub regular: Option<String>,
+    pub original: Option<String>,
 }

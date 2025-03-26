@@ -1,17 +1,14 @@
-use std::{env, collections::HashMap};
+use std::env;
 
 use askama::Template;
+use http::HeaderMap;
 use itertools::Itertools;
 use reqwest::Client;
 use serde::{Deserialize, Serialize};
 
-use crate::helper;
-
-use self::model::{AjaxResponse, AppReponse};
+use self::model::AjaxResponse;
 
 mod model;
-
-const ILLUST_URL: &str = "https://app-api.pixiv.net/v1/illust/detail";
 
 #[derive(Deserialize)]
 pub struct RawArtworkPath {
@@ -87,37 +84,26 @@ pub struct ArtworkListing {
     pub profile_image_url: Option<String>,
 }
 
-async fn app_request(
-    illust_id: &String,
-    access_token: &str,
-    client: &Client,
-) -> anyhow::Result<AppReponse> {
-    let app_params = HashMap::from([("illust_id", illust_id)]);
-    let mut app_headers = helper::headers();
-    app_headers.append("Host", "app-api.pixiv.net".parse()?);
-    app_headers.append("Authorization", format!("Bearer {access_token}").parse()?);
-
-    Ok(client
-        .get(ILLUST_URL)
-        .headers(app_headers)
-        .query(&app_params)
-        .send()
-        .await?
-        .json()
-        .await?)
-}
-
 async fn ajax_request(
     illust_id: &String,
     language: &Option<String>,
     client: &Client,
 ) -> anyhow::Result<AjaxResponse> {
+    let mut ajax_headers = HeaderMap::with_capacity(2);
+    if let Ok(pixiv_cookie) = env::var("PIXIV_COOKIE") {
+        ajax_headers.append("Cookie", format!("PHPSESSID={}", pixiv_cookie).parse()?);
+    }
+    ajax_headers.append("User-Agent", env::var("USER_AGENT").unwrap_or_else(|_| {
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36".to_string()
+    }).parse()?);
+
     Ok(client
         .get(format!(
             "https://www.pixiv.net/ajax/illust/{}?lang={}",
             &illust_id,
             &language.clone().unwrap_or_else(|| String::from("jp"))
         ))
+        .headers(ajax_headers)
         .send()
         .await?
         .json()
@@ -128,34 +114,23 @@ impl ArtworkListing {
     pub async fn get_listing(
         language: Option<String>,
         illust_id: String,
-        access_token: &str,
         host: &str,
         client: &Client,
     ) -> anyhow::Result<Self> {
         let clean_illust_id = illust_id.chars().take_while(|c| c.is_numeric()).collect::<String>();
-        let (app_response, ajax_response) = tokio::try_join!(
-            app_request(&clean_illust_id, access_token, client),
-            ajax_request(&clean_illust_id, &language, client),
-        )?;
+        let ajax_response = ajax_request(&clean_illust_id, &language, client).await?;
 
-        let ai_generated = app_response.illust.illust_ai_type == 2;
+        let ai_generated = ajax_response.body.ai_type == 2;
 
         let raw_profile_image_url = ajax_response.body.user_illusts.iter()
             .filter_map(|(_, user_illust_option)| user_illust_option.as_ref())
             .filter_map(|user_illust| user_illust.profile_image_url.clone())
             .next();
-        let profile_image_url = {
-            if let Some(raw_url) = raw_profile_image_url {
-                let parse_res = url::Url::parse(&raw_url);
-                if let Ok(parsed_url) = parse_res {
-                    Some(format!("https://{}/i{}", host, parsed_url.path()))
-                } else {
-                    None
-                }
-            } else {
-                None
-            }
-        };
+        let profile_image_url = raw_profile_image_url.and_then(|raw_url| {
+            url::Url::parse(&raw_url)
+            .ok()
+            .map(|parsed_url| format!("https://{}/i{}", host, parsed_url.path()))
+        });
 
         let tags: Vec<_> = ajax_response.body
             .tags
@@ -180,23 +155,20 @@ impl ArtworkListing {
         let is_ugoira = ajax_response.body.illust_type == 2;
         let ugoira_enabled = env::var("UGOIRA_ENABLED")
             .unwrap_or_else(|_| String::from("false")) == "true";
+        let image_url = ajax_response.body.urls.regular.or(ajax_response.body.urls.original).unwrap();
 
         let image_proxy_urls = if is_ugoira && ugoira_enabled {
             vec![format!("https://{}/i/ugoira/{}.mp4", host, clean_illust_id)]
-        } else if app_response.illust.meta_pages.is_empty() {
-            let url = url::Url::parse(&app_response.illust.image_urls.large)?;
-
-            vec![format!("https://{}/i{}", host, url.path())]
         } else {
-            app_response.illust
-                .meta_pages
-                .into_iter()
-                .map(|mp| {
-                    let url = url::Url::parse(&mp.image_urls.large)?;
-
-                    Ok(format!("https://{}/i{}", host, url.path()))
-                })
-                .collect::<anyhow::Result<Vec<String>>>()?
+            let path = url::Url::parse(&image_url)?.path().to_string();
+            (0..ajax_response.body.page_count).map(|i| {
+                let current_path = if i == 0 {
+                    path.clone()
+                } else {
+                    path.replace("_p0_", &format!("_p{}_", i))
+                };
+                format!("https://{}/i{}", host, current_path)
+            }).collect::<Vec<String>>()
         };
 
         Ok(Self {

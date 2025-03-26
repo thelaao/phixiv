@@ -3,7 +3,6 @@ use std::{env, sync::Arc};
 use axum::{
     extract::{Host, OriginalUri, Path, Query, State},
     headers::{CacheControl, UserAgent},
-    middleware,
     response::{Html, IntoResponse, Redirect, Response},
     routing::get,
     Router, TypedHeader,
@@ -15,8 +14,7 @@ use tokio::sync::RwLock;
 use crate::{
     helper::PhixivError,
     pixiv::{ArtworkListing, ArtworkPath, RawArtworkPath},
-    state::{authorized_middleware, PhixivState},
-    activity::activity_handler,
+    state::PhixivState,
 };
 
 async fn artwork_response(
@@ -31,7 +29,6 @@ async fn artwork_response(
     let listing = ArtworkListing::get_listing(
         path.language,
         path.id,
-        &state.auth.access_token,
         &host,
         &state.client,
     )
@@ -141,7 +138,6 @@ pub fn router(
         .route("/artworks/:id", get(artwork_handler))
         .route("/artworks/:id/:image_index", get(artwork_handler))
         .route("/member_illust.php", get(member_illust_handler))
-        .route("/api/v1/statuses/:id", get(activity_handler))
         .fallback(redirect_fallback)
-        .layer(middleware::from_fn_with_state(state, authorized_middleware))
+        .with_state(state)
 }

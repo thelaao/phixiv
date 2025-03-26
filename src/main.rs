@@ -6,7 +6,6 @@ pub mod oembed;
 pub mod pixiv;
 pub mod proxy;
 pub mod state;
-pub mod activity;
 
 use std::{env, net::SocketAddr, sync::Arc};
 
