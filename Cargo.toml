@@ -7,6 +7,7 @@ edition = "2021"
 anyhow = "1"
 askama = "0.12"
 axum = { version = "0.6", features = ["original-uri", "headers", "macros"] }
+chrono = "0.4.40"
 # bytes = "1.4.0"
 dotenvy = "0.15"
 http = "0.2"

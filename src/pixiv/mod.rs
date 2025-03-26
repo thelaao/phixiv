@@ -54,6 +54,7 @@ pub struct ArtworkTemplate {
     pub url: String,
     pub alt_text: String,
     pub host: String,
+    pub illust_id: String,
 }
 
 #[derive(Debug, Serialize, Template)]
@@ -81,6 +82,9 @@ pub struct ArtworkListing {
     pub author_name: String,
     pub author_id: String,
     pub is_ugoira: bool,
+    pub create_date: String,
+    pub illust_id: String,
+    pub profile_image_url: Option<String>,
 }
 
 async fn app_request(
@@ -136,6 +140,23 @@ impl ArtworkListing {
 
         let ai_generated = app_response.illust.illust_ai_type == 2;
 
+        let raw_profile_image_url = ajax_response.body.user_illusts.iter()
+            .filter_map(|(_, user_illust_option)| user_illust_option.as_ref())
+            .filter_map(|user_illust| user_illust.profile_image_url.clone())
+            .next();
+        let profile_image_url = {
+            if let Some(raw_url) = raw_profile_image_url {
+                let parse_res = url::Url::parse(&raw_url);
+                if let Ok(parsed_url) = parse_res {
+                    Some(format!("https://{}/i{}", host, parsed_url.path()))
+                } else {
+                    None
+                }
+            } else {
+                None
+            }
+        };
+
         let tags: Vec<_> = ajax_response.body
             .tags
             .tags
@@ -188,6 +209,9 @@ impl ArtworkListing {
             author_name: ajax_response.body.author_name,
             author_id: ajax_response.body.author_id,
             is_ugoira,
+            create_date: ajax_response.body.create_date,
+            illust_id,
+            profile_image_url,
         })
     }
 
@@ -240,6 +264,7 @@ impl ArtworkListing {
             url: self.url,
             alt_text: tag_string,
             host,
+            illust_id: self.illust_id,
         };
         Ok(template.render()?)
     }

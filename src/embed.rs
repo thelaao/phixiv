@@ -16,6 +16,7 @@ use crate::{
     helper::PhixivError,
     pixiv::{ArtworkListing, ArtworkPath, RawArtworkPath},
     state::{authorized_middleware, PhixivState},
+    activity::activity_handler,
 };
 
 async fn artwork_response(
@@ -140,6 +141,7 @@ pub fn router(
         .route("/artworks/:id", get(artwork_handler))
         .route("/artworks/:id/:image_index", get(artwork_handler))
         .route("/member_illust.php", get(member_illust_handler))
+        .route("/api/v1/statuses/:id", get(activity_handler))
         .fallback(redirect_fallback)
         .layer(middleware::from_fn_with_state(state, authorized_middleware))
 }

@@ -47,6 +47,10 @@ pub(super) struct AjaxBody {
     pub extra_data: AjaxExtraData,
     #[serde(rename = "illustType")]
     pub illust_type: u8,
+    #[serde(rename = "createDate")]
+    pub create_date: String,
+    #[serde(rename = "userIllusts")]
+    pub user_illusts: HashMap<String, Option<UserIllust>>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -68,4 +72,10 @@ pub(super) struct AjaxExtraData {
 #[derive(Debug, Deserialize)]
 pub(super) struct AjaxMeta {
     pub canonical: String,
+}
+
+#[derive(Deserialize, Debug)]
+pub(super) struct UserIllust {
+    #[serde(rename = "profileImageUrl")]
+    pub profile_image_url: Option<String>,
 }
