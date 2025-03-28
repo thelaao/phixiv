@@ -145,9 +145,9 @@ impl ActivityResponse {
             }],
             account: Account {
                 id: listing.author_id,
-                display_name: listing.author_name.clone(),
-                username: listing.author_name.clone(),
-                acct: listing.author_name,
+                display_name: listing.author_name,
+                username: "".to_string(),
+                acct: "".to_string(),
                 url: listing.url.clone(),
                 uri: listing.url,
                 created_at,
