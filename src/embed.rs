@@ -115,6 +115,9 @@ fn redirect_uri(uri: Uri) -> String {
     let Some(path_and_query) = uri.path_and_query() else {
         return String::from("https://www.pixiv.net/");
     };
+    if path_and_query.path() == "/" {
+        return env::var("PROVIDER_URL").unwrap_or_else(|_| String::from("https://github.com/HazelTheWitch/phixiv"));
+    }
 
     Uri::builder()
         .scheme("https")
