@@ -1,3 +1,5 @@
+use std::env;
+
 use axum::response::{IntoResponse, Response};
 use http::{HeaderMap, HeaderValue, StatusCode};
 
@@ -12,6 +14,14 @@ pub fn headers() -> HeaderMap<HeaderValue> {
     );
 
     headers
+}
+
+pub fn provider_name() -> String {
+    env::var("PROVIDER_NAME").unwrap_or_else(|_| String::from("phixiv"))
+}
+
+pub fn provider_url() -> String {
+    env::var("PROVIDER_URL").unwrap_or_else(|_| String::from("https://github.com/HazelTheWitch/phixiv"))
 }
 
 pub struct PhixivError(anyhow::Error);

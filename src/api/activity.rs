@@ -104,7 +104,7 @@ impl ActivityResponse {
             [
                 format!("<strong><a href=\"{}\">{}</a></strong>", listing.url, listing.title),
                 String::from(if listing.ai_generated {
-                    "AI Generated\n"
+                    "<strong>AI Generated</strong><br />"
                 } else {
                     ""
                 }),
@@ -116,6 +116,14 @@ impl ActivityResponse {
             || String::from("<br />"),
         )
         .collect::<String>();
+
+        let media_type = {
+            if media_attachment_url.contains("ugoira") {
+                "video"
+            } else {
+                "image"
+            }
+        }.to_string();
 
         Self {
             id: id.clone(),
@@ -129,12 +137,12 @@ impl ActivityResponse {
             spoiler_text: "".to_string(),
             visibility: "public".to_string(),
             application: Application {
-                name: "Twitter Web App".to_string(),
+                name: "Pixiv".to_string(),
                 website: None,
             },
             media_attachments: vec![MediaAttachment {
                 id: id,
-                media_type: "image".to_string(),
+                media_type: media_type,
                 url: media_attachment_url.clone(),
                 preview_url: media_attachment_url,
                 remote_url: None,

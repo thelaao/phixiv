@@ -12,7 +12,7 @@ use serde::Deserialize;
 use tokio::sync::RwLock;
 
 use crate::{
-    helper::PhixivError,
+    helper::{PhixivError, provider_url},
     pixiv::{ArtworkListing, ArtworkPath, RawArtworkPath},
     state::PhixivState,
 };
@@ -116,7 +116,7 @@ fn redirect_uri(uri: Uri) -> String {
         return String::from("https://www.pixiv.net/");
     };
     if path_and_query.path() == "/" {
-        return env::var("PROVIDER_URL").unwrap_or_else(|_| String::from("https://github.com/HazelTheWitch/phixiv"));
+        return provider_url();
     }
 
     Uri::builder()

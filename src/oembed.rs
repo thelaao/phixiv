@@ -1,8 +1,8 @@
-use std::env;
-
 use axum::{extract::Query, Json};
 use serde::{Deserialize, Serialize};
 use urlencoding::encode;
+
+use crate::helper::{provider_name, provider_url};
 
 #[derive(Deserialize)]
 pub struct EmbedRequest {
@@ -30,8 +30,8 @@ impl EmbedResponse {
             embed_type: "rich",
             author_name,
             author_url,
-            provider_name: env::var("PROVIDER_NAME").unwrap_or_else(|_| String::from("phixiv")),
-            provider_url: env::var("PROVIDER_URL").unwrap_or_else(|_| String::from("https://github.com/HazelTheWitch/phixiv")),
+            provider_name: provider_name(),
+            provider_url: provider_url(),
         }
     }
 }

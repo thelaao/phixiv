@@ -7,7 +7,7 @@ use reqwest::Client;
 use serde::{Deserialize, Serialize};
 
 use self::model::AjaxResponse;
-use crate::helper::ActivityId;
+use crate::helper::{ActivityId, provider_name};
 
 mod model;
 
@@ -67,6 +67,7 @@ pub struct UgoiraTemplate {
     pub url: String,
     pub alt_text: String,
     pub host: String,
+    pub activity_id: u64,
     pub site_name: String,
 }
 
@@ -227,7 +228,7 @@ impl ArtworkListing {
             index: index as u16,
         });
 
-        let site_name = env::var("PROVIDER_NAME").unwrap_or_else(|_| String::from("phixiv"));
+        let site_name = provider_name();
 
         if self.is_ugoira {
             let template = UgoiraTemplate {
@@ -239,6 +240,7 @@ impl ArtworkListing {
                 url: self.url,
                 alt_text: tag_string,
                 host,
+                activity_id,
                 site_name,
             };
             return Ok(template.render()?);
