@@ -95,6 +95,7 @@ impl ActivityResponse {
         id: String,
         created_at: String,
         media_attachment_url: String,
+        media_attachment_preview_url: String,
         listing: ArtworkListing,
     ) -> Self {
         let tag_string = Itertools::intersperse_with(listing.tags.into_iter(), || String::from(", "))
@@ -143,8 +144,8 @@ impl ActivityResponse {
             media_attachments: vec![MediaAttachment {
                 id: id,
                 media_type: media_type,
-                url: media_attachment_url.clone(),
-                preview_url: media_attachment_url,
+                url: media_attachment_url,
+                preview_url: media_attachment_preview_url,
                 remote_url: None,
                 preview_remote_url: None,
                 text_url: None,
@@ -206,11 +207,17 @@ pub async fn activity_handler(
     let created_at = DateTime::parse_from_rfc3339(&listing.create_date).unwrap().to_utc().format("%Y-%m-%dT%H:%M:%S%.3fZ").to_string();
     let index = (activity_id.index as usize).min(listing.image_proxy_urls.len().saturating_sub(1));
     let image_url = listing.image_proxy_urls[index].clone();
+    let preview_url = if image_url.contains("ugoira") {
+        listing.image_proxy_urls[1].clone()
+    } else {
+        image_url.clone()
+    };
 
     Ok(Json(ActivityResponse::new(
         activity_id.id.to_string(),
         created_at,
         image_url,
+        preview_url,
         listing,
     )))
 }

@@ -161,11 +161,11 @@ impl ArtworkListing {
         let ugoira_enabled = env::var("UGOIRA_ENABLED")
             .unwrap_or_else(|_| String::from("false")) == "true";
         let image_url = ajax_response.body.urls.regular.or(ajax_response.body.urls.original).unwrap();
+        let path = url::Url::parse(&image_url)?.path().to_string();
 
         let image_proxy_urls = if is_ugoira && ugoira_enabled {
-            vec![format!("https://{}/i/ugoira/{}.mp4", host, clean_illust_id)]
+            vec![format!("https://{}/i/ugoira/{}.mp4", host, clean_illust_id), format!("https://{}/i{}", host, path)]
         } else {
-            let path = url::Url::parse(&image_url)?.path().to_string();
             (0..ajax_response.body.page_count).map(|i| {
                 let current_path = if i == 0 {
                     path.clone()
@@ -196,10 +196,14 @@ impl ArtworkListing {
     }
 
     pub fn to_template(self, image_index: Option<usize>, host: String) -> anyhow::Result<String> {
-        let index = image_index
-            .unwrap_or(1)
-            .min(self.image_proxy_urls.len())
-            .saturating_sub(1);
+        let index = if self.is_ugoira {
+            0
+        } else {
+            image_index
+                .unwrap_or(1)
+                .min(self.image_proxy_urls.len())
+                .saturating_sub(1)
+        };
 
         let image_proxy_url = self.image_proxy_urls[index].clone();
 
