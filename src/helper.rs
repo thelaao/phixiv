@@ -30,3 +30,48 @@ where
         Self(value.into())
     }
 }
+
+#[derive(Debug)]
+pub struct ActivityId {
+    pub language: String,
+    pub id: u32,
+    pub index: u16,
+}
+
+impl From<u64> for ActivityId {
+    fn from(value: u64) -> Self {
+        let lang_id = (value >> 48) & 0xFF;
+        let id = (value >> 16) & 0xFFFFFFFF;
+        let index = value & 0xFFFF;
+
+        let language = match lang_id {
+            0 => "jp".to_string(),
+            1 => "en".to_string(),
+            2 => "zh".to_string(),
+            3 => "zh_tw".to_string(),
+            4 => "ko".to_string(),
+            _ => "jp".to_string(),
+        };
+
+        Self {
+            language,
+            id: id as u32,
+            index: index as u16,
+        }
+    }
+}
+
+impl From<ActivityId> for u64 {
+    fn from(value: ActivityId) -> Self {
+        let lang_id = match value.language.as_str() {
+            "jp" => 0,
+            "en" => 1,
+            "zh" => 2,
+            "zh_tw" => 3,
+            "ko" => 4,
+            _ => 0,
+        };
+
+        (lang_id as u64) << 48 | (value.id as u64) << 16 | (value.index as u64)
+    }
+}

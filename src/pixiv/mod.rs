@@ -7,6 +7,7 @@ use reqwest::Client;
 use serde::{Deserialize, Serialize};
 
 use self::model::AjaxResponse;
+use crate::helper::ActivityId;
 
 mod model;
 
@@ -51,7 +52,7 @@ pub struct ArtworkTemplate {
     pub url: String,
     pub alt_text: String,
     pub host: String,
-    pub illust_id: String,
+    pub activity_id: u64,
 }
 
 #[derive(Debug, Serialize, Template)]
@@ -82,6 +83,7 @@ pub struct ArtworkListing {
     pub create_date: String,
     pub illust_id: String,
     pub profile_image_url: Option<String>,
+    pub language: String,
 }
 
 async fn ajax_request(
@@ -171,6 +173,8 @@ impl ArtworkListing {
             }).collect::<Vec<String>>()
         };
 
+        let language = language.unwrap_or_else(|| "jp".to_string());
+
         Ok(Self {
             image_proxy_urls,
             title: ajax_response.body.title,
@@ -184,6 +188,7 @@ impl ArtworkListing {
             create_date: ajax_response.body.create_date,
             illust_id,
             profile_image_url,
+            language,
         })
     }
 
@@ -214,6 +219,12 @@ impl ArtworkListing {
         )
         .collect::<String>();
 
+        let activity_id = u64::from(ActivityId {
+            language: self.language,
+            id: self.illust_id.parse()?,
+            index: index as u16,
+        });
+
         if self.is_ugoira {
             let template = UgoiraTemplate {
                 image_proxy_url,
@@ -236,7 +247,7 @@ impl ArtworkListing {
             url: self.url,
             alt_text: tag_string,
             host,
-            illust_id: self.illust_id,
+            activity_id,
         };
         Ok(template.render()?)
     }

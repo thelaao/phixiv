@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 use axum::{
-    extract::{Host, Path, Query, State},
+    extract::{Host, Path, State},
     Json,
 };
 use chrono::DateTime;
@@ -10,7 +10,7 @@ use tokio::sync::RwLock;
 use itertools::Itertools;
 
 use crate::{
-    helper::PhixivError,
+    helper::{PhixivError, ActivityId},
     pixiv::ArtworkListing,
     state::PhixivState,
 };
@@ -18,12 +18,6 @@ use crate::{
 #[derive(Deserialize)]
 pub struct ActivityParams {
     pub id: String,
-}
-
-#[derive(Deserialize)]
-pub struct ActivityQuery {
-    pub language: Option<String>,
-    pub image_index: Option<usize>,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -108,7 +102,7 @@ impl ActivityResponse {
 
         let description = Itertools::intersperse_with(
             [
-                format!("<h1>{}</h1>", listing.title),
+                format!("<strong><a href=\"{}\">{}</a></strong>", listing.url, listing.title),
                 String::from(if listing.ai_generated {
                     "AI Generated\n"
                 } else {
@@ -119,7 +113,7 @@ impl ActivityResponse {
             ]
             .into_iter()
             .filter(|s| !s.is_empty()),
-            || String::from("\n"),
+            || String::from("<br />"),
         )
         .collect::<String>();
 
@@ -186,28 +180,27 @@ impl ActivityResponse {
 
 pub async fn activity_handler(
     Path(path): Path<ActivityParams>,
-    Query(query): Query<ActivityQuery>,
     State(state): State<Arc<RwLock<PhixivState>>>,
     Host(host): Host,
 ) -> Result<Json<ActivityResponse>, PhixivError> {
+    let activity_id: u64 = path.id.parse()?;
+    let activity_id = ActivityId::from(activity_id);
+
     let state = state.read().await;
     let listing = ArtworkListing::get_listing(
-        query.language,
-        path.id.clone(),
+        Some(activity_id.language),
+        activity_id.id.to_string(),
         &host,
         &state.client,
     )
     .await?;
 
     let created_at = DateTime::parse_from_rfc3339(&listing.create_date).unwrap().to_utc().format("%Y-%m-%dT%H:%M:%S%.3fZ").to_string();
-    let index = query.image_index
-        .unwrap_or(1)
-        .min(listing.image_proxy_urls.len())
-        .saturating_sub(1);
+    let index = (activity_id.index as usize).min(listing.image_proxy_urls.len().saturating_sub(1));
     let image_url = listing.image_proxy_urls[index].clone();
 
     Ok(Json(ActivityResponse::new(
-        path.id,
+        activity_id.id.to_string(),
         created_at,
         image_url,
         listing,
