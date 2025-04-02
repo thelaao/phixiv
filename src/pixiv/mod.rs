@@ -172,6 +172,7 @@ impl ArtworkListing {
                 } else {
                     path.replace("_p0_", &format!("_p{}_", i))
                 };
+                let current_path = current_path.replace("img-master", "c/600x1200_90/img-master");
                 format!("https://{}/i{}", host, current_path)
             }).collect::<Vec<String>>()
         };
