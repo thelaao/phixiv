@@ -24,7 +24,7 @@ pub(super) async fn artwork_info_handler(
 
     Ok(Json(
         ArtworkListing::get_listing(
-            path.language,
+            path.language.unwrap_or_else(|| "jp".to_string()),
             path.id,
             &host,
             &state.client,

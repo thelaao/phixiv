@@ -27,7 +27,7 @@ async fn artwork_response(
     let state = state.read().await;
 
     let listing = ArtworkListing::get_listing(
-        path.language,
+        path.language.unwrap_or_else(|| "jp".to_string()),
         path.id,
         &host,
         &state.client,

@@ -197,7 +197,7 @@ pub async fn activity_handler(
 
     let state = state.read().await;
     let listing = ArtworkListing::get_listing(
-        Some(activity_id.language),
+        activity_id.language,
         activity_id.id.to_string(),
         &host,
         &state.client,

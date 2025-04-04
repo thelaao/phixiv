@@ -5,6 +5,8 @@ use http::HeaderMap;
 use itertools::Itertools;
 use reqwest::Client;
 use serde::{Deserialize, Serialize};
+use cached::proc_macro::cached;
+use cached::SizedCache;
 
 use self::model::AjaxResponse;
 use crate::helper::{ActivityId, provider_name};
@@ -71,7 +73,7 @@ pub struct UgoiraTemplate {
     pub site_name: String,
 }
 
-#[derive(Serialize)]
+#[derive(Serialize, Clone)]
 /// Representing a listing of artworks, uniquely determined by language and illust_id
 pub struct ArtworkListing {
     pub image_proxy_urls: Vec<String>,
@@ -91,7 +93,7 @@ pub struct ArtworkListing {
 
 async fn ajax_request(
     illust_id: &String,
-    language: &Option<String>,
+    language: &String,
     client: &Client,
 ) -> anyhow::Result<AjaxResponse> {
     let mut ajax_headers = HeaderMap::with_capacity(2);
@@ -103,11 +105,7 @@ async fn ajax_request(
     }).parse()?);
 
     Ok(client
-        .get(format!(
-            "https://www.pixiv.net/ajax/illust/{}?lang={}",
-            &illust_id,
-            &language.clone().unwrap_or_else(|| String::from("jp"))
-        ))
+        .get(format!("https://www.pixiv.net/ajax/illust/{}?lang={}", &illust_id, &language))
         .headers(ajax_headers)
         .send()
         .await?
@@ -115,85 +113,94 @@ async fn ajax_request(
         .await?)
 }
 
+#[cached(
+    ty = "SizedCache<String, ArtworkListing>",
+    create = "{ SizedCache::with_size(1024) }",
+    convert = r#"{ format!("{}_{}", language, illust_id) }"#,
+    result = true
+)]
+async fn cached_get_listing(
+    language: String,
+    illust_id: String,
+    host: &str,
+    client: &Client,
+) -> anyhow::Result<ArtworkListing> {
+    let clean_illust_id = illust_id.chars().take_while(|c| c.is_numeric()).collect::<String>();
+    let ajax_response = ajax_request(&clean_illust_id, &language, client).await?;
+
+    let ai_generated = ajax_response.body.ai_type == 2;
+
+    let raw_profile_image_url = ajax_response.body.user_illusts.iter()
+        .filter_map(|(_, user_illust_option)| user_illust_option.as_ref())
+        .filter_map(|user_illust| user_illust.profile_image_url.clone())
+        .next();
+    let profile_image_url = raw_profile_image_url.and_then(|raw_url| {
+        url::Url::parse(&raw_url)
+        .ok()
+        .map(|parsed_url| format!("https://{}/i{}", host, parsed_url.path()))
+    });
+
+    let tags: Vec<_> = ajax_response.body
+        .tags
+        .tags
+        .into_iter()
+        .map(|tag| {
+            format!(
+                "#{}",
+                if let Some(translation) = tag.translation {
+                    translation.get(&language).unwrap_or(&tag.tag).to_string()
+                } else {
+                    tag.tag
+                }
+            )
+        })
+        .collect();
+
+    let is_ugoira = ajax_response.body.illust_type == 2;
+    let ugoira_enabled = env::var("UGOIRA_ENABLED")
+        .unwrap_or_else(|_| String::from("false")) == "true";
+    let image_url = ajax_response.body.urls.regular.or(ajax_response.body.urls.original).unwrap();
+    let path = url::Url::parse(&image_url)?.path().to_string();
+
+    let image_proxy_urls = if is_ugoira && ugoira_enabled {
+        vec![format!("https://{}/i/ugoira/{}.mp4", host, clean_illust_id), format!("https://{}/i{}", host, path)]
+    } else {
+        (0..ajax_response.body.page_count).map(|i| {
+            let current_path = if i == 0 {
+                path.clone()
+            } else {
+                path.replace("_p0_", &format!("_p{}_", i))
+            };
+            let current_path = current_path.replace("img-master", "c/600x1200_90/img-master");
+            format!("https://{}/i{}", host, current_path)
+        }).collect::<Vec<String>>()
+    };
+
+    Ok(ArtworkListing {
+        image_proxy_urls,
+        title: ajax_response.body.title,
+        ai_generated,
+        description: ajax_response.body.description,
+        tags,
+        url: ajax_response.body.extra_data.meta.canonical,
+        author_name: ajax_response.body.author_name,
+        author_id: ajax_response.body.author_id,
+        is_ugoira,
+        create_date: ajax_response.body.create_date,
+        illust_id,
+        profile_image_url,
+        language,
+    })
+}
+
 impl ArtworkListing {
     pub async fn get_listing(
-        language: Option<String>,
+        language: String,
         illust_id: String,
         host: &str,
         client: &Client,
     ) -> anyhow::Result<Self> {
-        let clean_illust_id = illust_id.chars().take_while(|c| c.is_numeric()).collect::<String>();
-        let ajax_response = ajax_request(&clean_illust_id, &language, client).await?;
-
-        let ai_generated = ajax_response.body.ai_type == 2;
-
-        let raw_profile_image_url = ajax_response.body.user_illusts.iter()
-            .filter_map(|(_, user_illust_option)| user_illust_option.as_ref())
-            .filter_map(|user_illust| user_illust.profile_image_url.clone())
-            .next();
-        let profile_image_url = raw_profile_image_url.and_then(|raw_url| {
-            url::Url::parse(&raw_url)
-            .ok()
-            .map(|parsed_url| format!("https://{}/i{}", host, parsed_url.path()))
-        });
-
-        let tags: Vec<_> = ajax_response.body
-            .tags
-            .tags
-            .into_iter()
-            .map(|tag| {
-                format!(
-                    "#{}",
-                    if let Some(language) = &language {
-                        if let Some(translation) = tag.translation {
-                            translation.get(language).unwrap_or(&tag.tag).to_string()
-                        } else {
-                            tag.tag
-                        }
-                    } else {
-                        tag.tag
-                    }
-                )
-            })
-            .collect();
-
-        let is_ugoira = ajax_response.body.illust_type == 2;
-        let ugoira_enabled = env::var("UGOIRA_ENABLED")
-            .unwrap_or_else(|_| String::from("false")) == "true";
-        let image_url = ajax_response.body.urls.regular.or(ajax_response.body.urls.original).unwrap();
-        let path = url::Url::parse(&image_url)?.path().to_string();
-
-        let image_proxy_urls = if is_ugoira && ugoira_enabled {
-            vec![format!("https://{}/i/ugoira/{}.mp4", host, clean_illust_id), format!("https://{}/i{}", host, path)]
-        } else {
-            (0..ajax_response.body.page_count).map(|i| {
-                let current_path = if i == 0 {
-                    path.clone()
-                } else {
-                    path.replace("_p0_", &format!("_p{}_", i))
-                };
-                let current_path = current_path.replace("img-master", "c/600x1200_90/img-master");
-                format!("https://{}/i{}", host, current_path)
-            }).collect::<Vec<String>>()
-        };
-
-        let language = language.unwrap_or_else(|| "jp".to_string());
-
-        Ok(Self {
-            image_proxy_urls,
-            title: ajax_response.body.title,
-            ai_generated,
-            description: ajax_response.body.description,
-            tags,
-            url: ajax_response.body.extra_data.meta.canonical,
-            author_name: ajax_response.body.author_name,
-            author_id: ajax_response.body.author_id,
-            is_ugoira,
-            create_date: ajax_response.body.create_date,
-            illust_id,
-            profile_image_url,
-            language,
-        })
+        cached_get_listing(language, illust_id, host, client).await
     }
 
     pub fn to_template(self, image_index: Option<usize>, host: String) -> anyhow::Result<String> {
