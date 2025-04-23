@@ -187,7 +187,7 @@ async fn cached_get_listing(
         author_id: ajax_response.body.author_id,
         is_ugoira,
         create_date: ajax_response.body.create_date,
-        illust_id,
+        illust_id: clean_illust_id,
         profile_image_url,
         language,
     })
