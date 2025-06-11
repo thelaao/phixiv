@@ -11,7 +11,7 @@
     <meta property="og:image" content="{{ image_proxy_url }}" />
     <meta property="og:image:alt" content="{{ alt_text }}" />
     <meta name="twitter:card" content="summary_large_image" />
-    <link rel="alternate" type="application/json+oembed" href="https://{{ host }}/e?i={{ author_id }}&n={{ author_name }}">
+    <link rel="alternate" type="application/json+oembed" href="https://{{ host }}/e?i={{ author_id }}&n={{ author_name|urlencode_strict }}">
     <link rel="alternate" type="application/activity+json" href="https://{{ host }}/api/v1/statuses/{{ activity_id }}">
 </head>
 <body>

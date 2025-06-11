@@ -13,7 +13,7 @@
     <meta property="og:video:type" content="video/mp4" />
     <meta property="og:image" content="0" />
     <meta name="twitter:card" content="player" />
-    <link rel="alternate" type="application/json+oembed" href="https://{{ host }}/e?i={{ author_id }}&n={{ author_name }}">
+    <link rel="alternate" type="application/json+oembed" href="https://{{ host }}/e?i={{ author_id }}&n={{ author_name|urlencode_strict }}">
     <link rel="alternate" type="application/activity+json" href="https://{{ host }}/api/v1/statuses/{{ activity_id }}">
 </head>
 <body>
