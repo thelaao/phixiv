@@ -1,16 +1,16 @@
 # phixiv
 
-[pixiv](https://www.pixiv.net/) embed fixer. If you run into any issues or have any suggestions to make this service better, please [make an issue](https://github.com/thelaao/phixiv/issues/new).
+[pixiv](https://www.pixiv.net/) embed fixer. If you run into any issues or have any suggestions to make this service better, please feel free to [open an issue](https://github.com/thelaao/phixiv/issues/new).
 
-## How to use
+## How to Use
 
-Replace "pixiv" with "phixiv" in the url to embed properly on Discord, etc. Alternatively, if on discord you can also paste the pixiv url and send `s/i/p` after, this will edit the previous message, replacing `pixiv` with `ppxiv` which will also embed properly; please note this will require the link to include the first `i` in your message.
+Just replace "pixiv" with "phixiv" or "ppxiv" in urls to embed web content properly on apps, such as Discord and Telegram.
 
-Additionally, when embedding a post with multiple images, add `/<index>` to the end of the link to embed that image.
+To choose a specified image from a artwork (e.g., manga), you should append `/<index>` to the link. The index starts from 1.
 
-## Path Formats
+### Path Formats
 
-The following are the valid paths for artworks, if there is a format which isn't listed which should be embedded, please [make an issue](https://github.com/thelaao/phixiv/issues/new).
+The following are valid paths for artworks, if there should be more embedding paths, please [open an issue](https://github.com/thelaao/phixiv/issues/new).
 
 ```text
 /artworks/:id
@@ -20,14 +20,27 @@ The following are the valid paths for artworks, if there is a format which isn't
 /member_illust.php?illust_id=:id
 ```
 
-A simple API for basic information such as tags and direct image links is provided.
+Here are some examples.
 
-```text
-/api/info?id=<id>&language=<language>
-```
+| URL | Description |
+|:- |:- |
+| https://www.phixiv.net/member_illust.php?illust_id=124748386 | Artwork with ID 124748386 |
+| https://www.phixiv.net/artworks/124748386 | The same artwork |
+| https://www.phixiv.net/en/artworks/124748386 | The same artwork with tags in English translation |
+| https://www.phixiv.net/artworks/124748386/2 | The 2nd (not 3rd) image of the same artwork |
 
-### Examples
+### Discord Shortcut
 
-- Arwork with ID 124748386: https://www.phixiv.net/artworks/124748386
-- Second image of the same artwork: https://www.phixiv.net/artworks/124748386/2
-- Same artwork with the tags translated to english: https://www.phixiv.net/en/artworks/124748386
+On Discord, instead of editing pixiv urls, typing `s/i/p` and hitting Enter could be a bit more quick. This command will replace `pixiv` with `ppxiv`. If there are multiple `i`'s in that message, you should use `s/pixiv/ppxiv` to shoot it accurately.
+
+## Advanced Usages
+
+There are some APIs for developers or internal usage. It's recommended to read the source code before using them directly.
+
+| Path | Description |
+|:- |:- |
+| `/health` | Health check |
+| `/e/?n=:author_name&i=:author_id` | oEmbed-like API |
+| `/i/:path` | Proxy API |
+| `/api/info?id=:id&language=:language` | Basic info (e.g., direct image links and tags) in JSON |
+| `/api/v1/statuses/:status_id` | Mastodon-like API |
