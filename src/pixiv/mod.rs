@@ -7,6 +7,7 @@ use reqwest::Client;
 use serde::{Deserialize, Serialize};
 use cached::proc_macro::cached;
 use cached::SizedCache;
+use fancy_regex::Regex;
 
 use self::model::AjaxResponse;
 use crate::helper::{ActivityId, provider_name};
@@ -220,12 +221,10 @@ impl ArtworkListing {
 
         let description = Itertools::intersperse_with(
             [
-                String::from(if self.ai_generated {
-                    "AI Generated\n"
-                } else {
-                    ""
-                }),
-                self.description,
+                format!("{}{}", match self.ai_generated {
+                    true => String::from("[AI Generated] "),
+                    false => String::new(),
+                }, Self::extract_html_inner_text(self.description)),
                 tag_string.clone(),
             ]
             .into_iter()
@@ -270,5 +269,72 @@ impl ArtworkListing {
             site_name,
         };
         Ok(template.render()?)
+    }
+
+    /// Extract visible strings (innerText) from html string.
+    ///
+    /// The html flavor is based on documentation from *pixiv Help Center*: [What is a caption?](https://www.pixiv.help/hc/en-us/articles/235646067-What-is-a-caption).
+    /// There is NO any special processing for shorthand links: [I want to put a shorthand link to other illustrations and novels in the caption (like illust/○○○ and novel/○○○) when I post an illustration on pixiv](https://www.pixiv.help/hc/en-us/articles/235645647-I-want-to-put-a-shorthand-link-to-other-illustrations-and-novels-in-the-caption-like-illust-and-novel-when-I-post-an-illustration-on-pixiv)
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// let expected = vec![
+    ///     "Caption: https://example.com/ a<NOT A TAG>",
+    ///     "b_STRONG  I<x>I",
+    ///     "S0",
+    ///     "S1",
+    ///     "https://example.com/",
+    ///     "A More Com<>ple<x> One",
+    /// ]
+    /// .join("\n");
+    ///
+    /// let result = extract_html_inner_text(vec![
+    ///     "    Caption:",
+    ///     r#"<a href="/jump.php?https%3A%2F%2Fexample.com%2F" target="_blank">https://example.com/</a>"#,
+    ///     "a<NOT A TAG><br />b",
+    ///     r#"<span style="color:#fff;">_</span >"#,
+    ///     "<strong>STRONG</strong  >",
+    ///     "<i>  I<x>I  </i>",
+    ///     "<br >",
+    ///     "<s>S0<br>S1</s>",
+    ///     "<empty></empty    >",
+    ///     r#"<br  /><a>https://example.com/</a><br  />"#,
+    ///     "<strong>A<i> More </i>Com<>ple<x> <s>One</s></strong>",
+    ///     "    ",
+    /// ]
+    /// .join(""));
+    ///
+    /// assert_eq!(expected, result);
+    /// ```
+    fn extract_html_inner_text(html: String) -> String {
+        let re = Regex::new(
+            r"^(?<before>.*?)<(?<tag>[^\s>]+)(?:\s*[^>]+)?>(?<inner>.*?)</\k<tag>\s*>(?<after>[^$]*)$")
+            .unwrap();
+
+        let mut full_string: String = String::with_capacity(html.len());
+        let mut string_segments = vec![html];
+
+        while let Some(segment) = string_segments.pop() {
+            full_string += match re.captures(&segment).unwrap() {
+                Some(captures) => {
+                    string_segments.push(String::from(captures.name("after").unwrap().as_str()));
+
+                    let mut inner = String::from(captures.name("inner").unwrap().as_str());
+                    if captures.name("tag").unwrap().as_str() == "a" /* anchor */ {
+                        // avoid unexpected concatenation
+                        inner = format!(" {} ", inner)
+                    }
+                    string_segments.push(inner);
+
+                    captures.name("before").unwrap().as_str()
+                }
+                None => segment.as_str(),
+            }
+        }
+
+        Regex::new(r"<br\s*/?>").unwrap().split(&full_string)
+            .map(|x| String::from(x.unwrap().trim() /* for text from standalone anchors */))
+            .collect::<Vec<String>>().join("\n")
     }
 }

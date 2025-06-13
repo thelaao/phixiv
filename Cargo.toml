@@ -11,6 +11,7 @@ cached = { version = "0.55.1", features = ["async"] }
 chrono = "0.4.40"
 # bytes = "1.4.0"
 dotenvy = "0.15"
+fancy-regex = "0.14.0"
 http = "0.2"
 isbot = "0.1"
 itertools = "0.11.0"
