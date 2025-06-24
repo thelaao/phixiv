@@ -17,6 +17,7 @@ The following are valid paths for artworks, if there should be more embedding pa
 /:language/artworks/:id
 /artworks/:id/:index
 /:language/artworks/:id/:index
+/i/:id
 /member_illust.php?illust_id=:id
 ```
 
