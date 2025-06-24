@@ -1,5 +1,4 @@
 pub mod api;
-pub mod auth;
 pub mod embed;
 pub mod helper;
 pub mod oembed;
@@ -57,7 +56,7 @@ async fn main() -> anyhow::Result<()> {
     tracing::info!("Listening on: {addr}");
 
     let state = Arc::new(RwLock::new(
-        PhixivState::login(env::var("PIXIV_REFRESH_TOKEN")?).await?,
+        PhixivState::login().await?,
     ));
 
     axum::Server::bind(&addr)
