@@ -1,4 +1,4 @@
-use std::{sync::Arc, time::Duration, env};
+use std::{env, sync::Arc, time::Duration};
 
 use axum::{
     body::StreamBody,
@@ -17,12 +17,12 @@ use crate::{
 
 async fn proxy_handler(
     State(state): State<Arc<RwLock<PhixivState>>>,
-    Path(path): Path<String>,
+    Path((path_first, path_rest)): Path<(String, String)>,
 ) -> Result<impl IntoResponse, PhixivError> {
     let state = state.read().await;
 
     let base = env::var("PXIMG_BASE").unwrap_or_else(|_| String::from("https://i.pximg.net/"));
-    let url = format!("{base}{path}");
+    let url = format!("{base}{path_first}/{path_rest}");
 
     let mut headers = helper::headers();
     headers.append("Referer", "https://www.pixiv.net/".parse()?);
@@ -42,6 +42,6 @@ async fn proxy_handler(
 
 pub fn proxy_router(state: Arc<RwLock<PhixivState>>) -> Router<Arc<RwLock<PhixivState>>> {
     Router::new()
-        .route("/*path", get(proxy_handler))
+        .route("/:path_first/*path_rest", get(proxy_handler))
         .with_state(state)
 }

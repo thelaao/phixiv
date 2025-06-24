@@ -12,7 +12,7 @@ use serde::Deserialize;
 use tokio::sync::RwLock;
 
 use crate::{
-    helper::{PhixivError, provider_url},
+    helper::{provider_url, PhixivError},
     pixiv::{ArtworkListing, ArtworkPath, RawArtworkPath},
     state::PhixivState,
 };
@@ -140,6 +140,7 @@ pub fn router(
         .route("/:language/artworks/:id/:image_index", get(artwork_handler))
         .route("/artworks/:id", get(artwork_handler))
         .route("/artworks/:id/:image_index", get(artwork_handler))
+        .route("/i/:id", get(artwork_handler))
         .route("/member_illust.php", get(member_illust_handler))
         .fallback(redirect_fallback)
         .with_state(state)
