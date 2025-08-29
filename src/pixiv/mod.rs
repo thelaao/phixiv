@@ -1,16 +1,16 @@
 use std::env;
 
 use askama::Template;
+use cached::proc_macro::cached;
+use cached::SizedCache;
+use fancy_regex::{Captures, Regex};
 use http::HeaderMap;
 use itertools::Itertools;
 use reqwest::Client;
 use serde::{Deserialize, Serialize};
-use cached::proc_macro::cached;
-use cached::SizedCache;
-use fancy_regex::Regex;
 
 use self::model::AjaxResponse;
-use crate::helper::{ActivityId, provider_name};
+use crate::helper::{provider_name, ActivityId};
 
 mod model;
 
@@ -32,7 +32,13 @@ impl TryFrom<RawArtworkPath> for ArtworkPath {
 
     fn try_from(value: RawArtworkPath) -> Result<Self, Self::Error> {
         let image_index = match value.image_index {
-            Some(index) => Some(index.chars().take_while(|c| c.is_numeric()).collect::<String>().parse()?),
+            Some(index) => Some(
+                index
+                    .chars()
+                    .take_while(|c| c.is_numeric())
+                    .collect::<String>()
+                    .parse()?,
+            ),
             None => None,
         };
 
@@ -106,7 +112,10 @@ async fn ajax_request(
     }).parse()?);
 
     Ok(client
-        .get(format!("https://www.pixiv.net/ajax/illust/{}?lang={}", &illust_id, &language))
+        .get(format!(
+            "https://www.pixiv.net/ajax/illust/{}?lang={}",
+            &illust_id, &language
+        ))
         .headers(ajax_headers)
         .send()
         .await?
@@ -126,22 +135,29 @@ async fn cached_get_listing(
     host: &str,
     client: &Client,
 ) -> anyhow::Result<ArtworkListing> {
-    let clean_illust_id = illust_id.chars().take_while(|c| c.is_numeric()).collect::<String>();
+    let clean_illust_id = illust_id
+        .chars()
+        .take_while(|c| c.is_numeric())
+        .collect::<String>();
     let ajax_response = ajax_request(&clean_illust_id, &language, client).await?;
 
     let ai_generated = ajax_response.body.ai_type == 2;
 
-    let raw_profile_image_url = ajax_response.body.user_illusts.iter()
+    let raw_profile_image_url = ajax_response
+        .body
+        .user_illusts
+        .iter()
         .filter_map(|(_, user_illust_option)| user_illust_option.as_ref())
         .filter_map(|user_illust| user_illust.profile_image_url.clone())
         .next();
     let profile_image_url = raw_profile_image_url.and_then(|raw_url| {
         url::Url::parse(&raw_url)
-        .ok()
-        .map(|parsed_url| format!("https://{}/i{}", host, parsed_url.path()))
+            .ok()
+            .map(|parsed_url| format!("https://{}/i{}", host, parsed_url.path()))
     });
 
-    let tags: Vec<_> = ajax_response.body
+    let tags: Vec<_> = ajax_response
+        .body
         .tags
         .tags
         .into_iter()
@@ -158,30 +174,41 @@ async fn cached_get_listing(
         .collect();
 
     let is_ugoira = ajax_response.body.illust_type == 2;
-    let ugoira_enabled = env::var("UGOIRA_ENABLED")
-        .unwrap_or_else(|_| String::from("false")) == "true";
-    let image_url = ajax_response.body.urls.regular.or(ajax_response.body.urls.original).unwrap();
+    let ugoira_enabled =
+        env::var("UGOIRA_ENABLED").unwrap_or_else(|_| String::from("false")) == "true";
+    let image_url = ajax_response
+        .body
+        .urls
+        .regular
+        .or(ajax_response.body.urls.original)
+        .unwrap();
     let path = url::Url::parse(&image_url)?.path().to_string();
 
     let image_proxy_urls = if is_ugoira && ugoira_enabled {
-        vec![format!("https://{}/i/ugoira/{}.mp4", host, clean_illust_id), format!("https://{}/i{}", host, path)]
+        vec![
+            format!("https://{}/i/ugoira/{}.mp4", host, clean_illust_id),
+            format!("https://{}/i{}", host, path),
+        ]
     } else {
-        (0..ajax_response.body.page_count).map(|i| {
-            let current_path = if i == 0 {
-                path.clone()
-            } else {
-                path.replace("_p0_", &format!("_p{}_", i))
-            };
-            let current_path = current_path.replace("img-master", "c/600x1200_90/img-master");
-            format!("https://{}/i{}", host, current_path)
-        }).collect::<Vec<String>>()
+        (0..ajax_response.body.page_count)
+            .map(|i| {
+                let current_path = if i == 0 {
+                    path.clone()
+                } else {
+                    path.replace("_p0_", &format!("_p{}_", i))
+                };
+                let current_path = current_path.replace("img-master", "c/600x1200_90/img-master");
+                format!("https://{}/i{}", host, current_path)
+            })
+            .collect::<Vec<String>>()
     };
+    let description = fix_links(ajax_response.body.description);
 
     Ok(ArtworkListing {
         image_proxy_urls,
         title: ajax_response.body.title,
         ai_generated,
-        description: ajax_response.body.description,
+        description: description,
         tags,
         url: ajax_response.body.extra_data.meta.canonical,
         author_name: ajax_response.body.author_name,
@@ -192,6 +219,14 @@ async fn cached_get_listing(
         profile_image_url,
         language,
     })
+}
+
+fn fix_links(description: String) -> String {
+    let re = Regex::new("href=\"/jump.php\\?(.*?)\"").unwrap();
+    re.replace(&description, |caps: &Captures| {
+        format!("href=\"{}\"", urlencoding::decode(&caps[1]).unwrap())
+    })
+    .into_owned()
 }
 
 impl ArtworkListing {
@@ -221,10 +256,14 @@ impl ArtworkListing {
 
         let description = Itertools::intersperse_with(
             [
-                format!("{}{}", match self.ai_generated {
-                    true => String::from("[AI Generated] "),
-                    false => String::new(),
-                }, Self::extract_html_inner_text(self.description)),
+                format!(
+                    "{}{}",
+                    match self.ai_generated {
+                        true => String::from("[AI Generated] "),
+                        false => String::new(),
+                    },
+                    Self::extract_html_inner_text(self.description)
+                ),
                 tag_string.clone(),
             ]
             .into_iter()
@@ -321,7 +360,9 @@ impl ArtworkListing {
                     string_segments.push(String::from(captures.name("after").unwrap().as_str()));
 
                     let mut inner = String::from(captures.name("inner").unwrap().as_str());
-                    if captures.name("tag").unwrap().as_str() == "a" /* anchor */ {
+                    if captures.name("tag").unwrap().as_str() == "a"
+                    /* anchor */
+                    {
                         // avoid unexpected concatenation
                         inner = format!(" {} ", inner)
                     }
@@ -333,8 +374,15 @@ impl ArtworkListing {
             }
         }
 
-        Regex::new(r"<br\s*/?>").unwrap().split(&full_string)
-            .map(|x| String::from(x.unwrap().trim() /* for text from standalone anchors */))
-            .collect::<Vec<String>>().join("\n")
+        Regex::new(r"<br\s*/?>")
+            .unwrap()
+            .split(&full_string)
+            .map(|x| {
+                String::from(
+                    x.unwrap().trim(), /* for text from standalone anchors */
+                )
+            })
+            .collect::<Vec<String>>()
+            .join("\n")
     }
 }
