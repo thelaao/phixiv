@@ -8,6 +8,8 @@ Just replace "pixiv" with "phixiv" or "ppxiv" in urls to embed web content prope
 
 To choose a specified image from a artwork (e.g., manga), you should append `/<index>` to the link. The index starts from 1.
 
+If you want a more compact embed, use c.phixiv.net or c.ppxiv.net, those will omit the text from the pixiv post.
+
 ### Path Formats
 
 The following are valid paths for artworks, if there should be more embedding paths, please [open an issue](https://github.com/thelaao/phixiv/issues/new).

@@ -254,6 +254,11 @@ impl ArtworkListing {
         let tag_string = Itertools::intersperse_with(self.tags.into_iter(), || String::from(", "))
             .collect::<String>();
 
+        let description_text = if host.starts_with("c.") {
+            String::new()
+        } else {
+            Self::extract_html_inner_text(self.description)
+        };
         let description = Itertools::intersperse_with(
             [
                 format!(
@@ -262,7 +267,7 @@ impl ArtworkListing {
                         true => String::from("[AI Generated] "),
                         false => String::new(),
                     },
-                    Self::extract_html_inner_text(self.description)
+                    description_text
                 ),
                 tag_string.clone(),
             ]

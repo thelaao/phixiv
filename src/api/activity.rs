@@ -5,12 +5,12 @@ use axum::{
     Json,
 };
 use chrono::DateTime;
+use itertools::Itertools;
 use serde::{Deserialize, Serialize};
 use tokio::sync::RwLock;
-use itertools::Itertools;
 
 use crate::{
-    helper::{PhixivError, ActivityId},
+    helper::{ActivityId, PhixivError},
     pixiv::ArtworkListing,
     state::PhixivState,
 };
@@ -22,9 +22,9 @@ pub struct ActivityParams {
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct ActivityResponse {
-    id: String, // variable
-    url: String, // variable
-    uri: String, // variable same as url
+    id: String,         // variable
+    url: String,        // variable
+    uri: String,        // variable same as url
     created_at: String, // variable
     edited_at: Option<serde_json::Value>,
     reblog: Option<serde_json::Value>,
@@ -50,11 +50,11 @@ pub struct Application {
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct MediaAttachment {
-    id: String, // variable
+    id: String,
     #[serde(rename = "type")]
     media_type: String,
-    url: String, // variable
-    preview_url: String, // variable same as url
+    url: String,
+    preview_url: String,
     remote_url: Option<serde_json::Value>,
     preview_remote_url: Option<serde_json::Value>,
     text_url: Option<serde_json::Value>,
@@ -64,22 +64,22 @@ pub struct MediaAttachment {
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct Account {
-    id: String, // variable
-    display_name: String, // variable
-    username: String, // variable
-    acct: String, // variable same as display_name
-    url: String, // variable
-    uri: String, // variable same as url
-    created_at: String, // variable
+    id: String,
+    display_name: String,
+    username: String,
+    acct: String,
+    url: String,
+    uri: String,
+    created_at: String,
     locked: bool,
     bot: bool,
     discoverable: bool,
     indexable: bool,
     group: bool,
-    avatar: Option<String>, // variable
-    avatar_static: Option<String>, // variable same as avatar
-    header: Option<serde_json::Value>, // variable
-    header_static: Option<serde_json::Value>, // variable same as header
+    avatar: Option<String>,
+    avatar_static: Option<String>,
+    header: Option<serde_json::Value>,
+    header_static: Option<serde_json::Value>,
     followers_count: i64,
     following_count: i64,
     statuses_count: i64,
@@ -97,19 +97,29 @@ impl ActivityResponse {
         media_attachment_url: String,
         media_attachment_preview_url: String,
         listing: ArtworkListing,
+        host: String,
     ) -> Self {
-        let tag_string = Itertools::intersperse_with(listing.tags.into_iter(), || String::from(", "))
-            .collect::<String>();
+        let tag_string =
+            Itertools::intersperse_with(listing.tags.into_iter(), || String::from(", "))
+                .collect::<String>();
 
+        let description_text = if host.starts_with("c.") {
+            String::new()
+        } else {
+            listing.description
+        };
         let description = Itertools::intersperse_with(
             [
-                format!("<strong><a href=\"{}\">{}</a></strong>", listing.url, listing.title),
+                format!(
+                    "<strong><a href=\"{}\">{}</a></strong>",
+                    listing.url, listing.title
+                ),
                 String::from(if listing.ai_generated {
                     "<strong>AI Generated</strong><br />"
                 } else {
                     ""
                 }),
-                listing.description,
+                description_text,
                 tag_string.clone(),
             ]
             .into_iter()
@@ -124,7 +134,8 @@ impl ActivityResponse {
             } else {
                 "image"
             }
-        }.to_string();
+        }
+        .to_string();
 
         Self {
             id: id.clone(),
@@ -204,7 +215,11 @@ pub async fn activity_handler(
     )
     .await?;
 
-    let created_at = DateTime::parse_from_rfc3339(&listing.create_date).unwrap().to_utc().format("%Y-%m-%dT%H:%M:%S%.3fZ").to_string();
+    let created_at = DateTime::parse_from_rfc3339(&listing.create_date)
+        .unwrap()
+        .to_utc()
+        .format("%Y-%m-%dT%H:%M:%S%.3fZ")
+        .to_string();
     let index = (activity_id.index as usize).min(listing.image_proxy_urls.len().saturating_sub(1));
     let image_url = listing.image_proxy_urls[index].clone();
     let preview_url = if image_url.contains("ugoira") {
@@ -219,5 +234,6 @@ pub async fn activity_handler(
         image_url,
         preview_url,
         listing,
+        host,
     )))
 }
