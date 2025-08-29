@@ -223,7 +223,7 @@ async fn cached_get_listing(
 
 fn fix_links(description: String) -> String {
     let re = Regex::new("href=\"/jump.php\\?(.*?)\"").unwrap();
-    re.replace(&description, |caps: &Captures| {
+    re.replace_all(&description, |caps: &Captures| {
         format!("href=\"{}\"", urlencoding::decode(&caps[1]).unwrap())
     })
     .into_owned()
