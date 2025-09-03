@@ -37,6 +37,8 @@ pub(super) struct AjaxBody {
     pub comment_count: u32,
     #[serde(rename = "viewCount")]
     pub view_count: u32,
+    #[serde(rename = "xRestrict")]
+    pub x_restrict: u32,
 }
 
 #[derive(Debug, Deserialize)]
