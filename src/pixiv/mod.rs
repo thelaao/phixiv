@@ -100,6 +100,7 @@ pub struct ArtworkListing {
     pub like_count: u32,
     pub comment_count: u32,
     pub view_count: u32,
+    pub x_restrict: u32,
 }
 
 async fn ajax_request(
@@ -226,6 +227,7 @@ async fn cached_get_listing(
         like_count: ajax_response.body.like_count,
         comment_count: ajax_response.body.comment_count,
         view_count: ajax_response.body.view_count,
+        x_restrict: ajax_response.body.x_restrict,
     })
 }
 
