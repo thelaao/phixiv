@@ -188,6 +188,7 @@ async fn cached_get_listing(
         .or(ajax_response.body.urls.original)
         .unwrap();
     let path = url::Url::parse(&image_url)?.path().to_string();
+    let thumbnail_type = env::var("THUMBNAIL_TYPE").ok();
 
     let image_proxy_urls = if is_ugoira && ugoira_enabled {
         vec![
@@ -197,12 +198,14 @@ async fn cached_get_listing(
     } else {
         (0..ajax_response.body.page_count)
             .map(|i| {
-                let current_path = if i == 0 {
+                let mut current_path = if i == 0 {
                     path.clone()
                 } else {
                     path.replace("_p0_", &format!("_p{}_", i))
                 };
-                // let current_path = current_path.replace("img-master", "c/600x1200_90/img-master");
+                if let Some(replacement) = &thumbnail_type {
+                    current_path = current_path.replace("img-master", replacement);
+                }
                 format!("https://{}/i{}", host, current_path)
             })
             .collect::<Vec<String>>()
