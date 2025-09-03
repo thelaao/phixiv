@@ -96,6 +96,10 @@ pub struct ArtworkListing {
     pub illust_id: String,
     pub profile_image_url: Option<String>,
     pub language: String,
+    pub bookmark_count: u32,
+    pub like_count: u32,
+    pub comment_count: u32,
+    pub view_count: u32,
 }
 
 async fn ajax_request(
@@ -218,6 +222,10 @@ async fn cached_get_listing(
         illust_id: clean_illust_id,
         profile_image_url,
         language,
+        bookmark_count: ajax_response.body.bookmark_count,
+        like_count: ajax_response.body.like_count,
+        comment_count: ajax_response.body.comment_count,
+        view_count: ajax_response.body.view_count,
     })
 }
 

@@ -29,6 +29,14 @@ pub(super) struct AjaxBody {
     pub page_count: u32,
     #[serde(rename = "aiType")]
     pub ai_type: u8,
+    #[serde(rename = "bookmarkCount")]
+    pub bookmark_count: u32,
+    #[serde(rename = "likeCount")]
+    pub like_count: u32,
+    #[serde(rename = "commentCount")]
+    pub comment_count: u32,
+    #[serde(rename = "viewCount")]
+    pub view_count: u32,
 }
 
 #[derive(Debug, Deserialize)]
