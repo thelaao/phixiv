@@ -13,6 +13,7 @@ use crate::{helper::PhixivError, pixiv::ArtworkListing, state::PhixivState};
 pub struct ArtworkInfoPath {
     pub language: Option<String>,
     pub id: String,
+    pub index: Option<usize>,
 }
 
 pub(super) async fn artwork_info_handler(
@@ -26,6 +27,7 @@ pub(super) async fn artwork_info_handler(
         ArtworkListing::get_listing(
             path.language.unwrap_or_else(|| "jp".to_string()),
             path.id,
+            path.index.unwrap_or_else(|| 0),
             &host,
             &state.client,
         )

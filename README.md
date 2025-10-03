@@ -45,5 +45,5 @@ There are some APIs for developers or internal usage. It's recommended to read t
 | `/health` | Health check |
 | `/e/?n=:author_name&i=:author_id` | oEmbed-like API |
 | `/i/:path` | Proxy API |
-| `/api/info?id=:id&language=:language` | Basic info (e.g., direct image links and tags) in JSON |
+| `/api/info?id=:id&language=:language&index=:index` | Basic info (e.g., direct image links and tags) in JSON |
 | `/api/v1/statuses/:status_id` | Mastodon-like API |
