@@ -210,6 +210,7 @@ pub async fn activity_handler(
     let listing = ArtworkListing::get_listing(
         activity_id.language,
         activity_id.id.to_string(),
+        activity_id.index as usize,
         &host,
         &state.client,
     )

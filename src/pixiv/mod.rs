@@ -246,10 +246,15 @@ impl ArtworkListing {
     pub async fn get_listing(
         language: String,
         illust_id: String,
+        image_index: usize,
         host: &str,
         client: &Client,
     ) -> anyhow::Result<Self> {
-        cached_get_listing(language, illust_id, host, client).await
+        let mut listing = cached_get_listing(language, illust_id, host, client).await?;
+        if image_index != 0 {
+            listing.url = format!("{}#{}", listing.url, image_index)
+        }
+        Ok(listing)
     }
 
     pub fn to_template(self, image_index: Option<usize>, host: String) -> anyhow::Result<String> {
