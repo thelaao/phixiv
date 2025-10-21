@@ -25,6 +25,7 @@ pub struct ArtworkPath {
     pub language: Option<String>,
     pub id: String,
     pub image_index: Option<usize>,
+    pub image_index_end: Option<usize>,
 }
 
 impl TryFrom<RawArtworkPath> for ArtworkPath {
@@ -32,7 +33,7 @@ impl TryFrom<RawArtworkPath> for ArtworkPath {
 
     fn try_from(value: RawArtworkPath) -> Result<Self, Self::Error> {
         let image_index = match value.image_index {
-            Some(index) => Some(
+            Some(ref index) => Some(
                 index
                     .chars()
                     .take_while(|c| c.is_numeric())
@@ -41,11 +42,23 @@ impl TryFrom<RawArtworkPath> for ArtworkPath {
             ),
             None => None,
         };
+        let image_index_end = match value.image_index {
+            Some(index) => index
+                .chars()
+                .skip_while(|c| c.is_numeric())
+                .skip_while(|c| *c == '-')
+                .take_while(|c| c.is_numeric())
+                .collect::<String>()
+                .parse::<usize>()
+                .ok(),
+            None => None,
+        };
 
         Ok(Self {
             language: value.language,
             id: value.id,
             image_index,
+            image_index_end: image_index_end,
         })
     }
 }
@@ -257,14 +270,26 @@ impl ArtworkListing {
         Ok(listing)
     }
 
-    pub fn to_template(self, image_index: Option<usize>, host: String) -> anyhow::Result<String> {
+    pub fn to_template(
+        self,
+        image_index: usize,
+        image_index_end: usize,
+        host: String,
+    ) -> anyhow::Result<String> {
         let index = if self.is_ugoira {
             0
         } else {
             image_index
-                .unwrap_or(1)
                 .min(self.image_proxy_urls.len())
                 .saturating_sub(1)
+        };
+        let index_end = if self.is_ugoira {
+            0
+        } else {
+            image_index_end
+                .min(self.image_proxy_urls.len())
+                .saturating_sub(1)
+                .max(index)
         };
 
         let image_proxy_url = self.image_proxy_urls[index].clone();
@@ -299,6 +324,7 @@ impl ArtworkListing {
             language: self.language,
             id: self.illust_id.parse()?,
             index: index as u16,
+            offset_end: (index_end - index) as u16,
         });
 
         let site_name = provider_name();

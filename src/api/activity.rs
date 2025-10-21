@@ -94,8 +94,8 @@ impl ActivityResponse {
     fn new(
         id: String,
         created_at: String,
-        media_attachment_url: String,
-        media_attachment_preview_url: String,
+        index: usize,
+        index_end: usize,
         listing: ArtworkListing,
         host: String,
     ) -> Self {
@@ -128,14 +128,27 @@ impl ActivityResponse {
         )
         .collect::<String>();
 
-        let media_type = {
-            if media_attachment_url.contains("ugoira") {
-                "video"
-            } else {
-                "image"
-            }
-        }
-        .to_string();
+        let media_attachments = listing.image_proxy_urls[index..=index_end]
+            .iter()
+            .map(|url| {
+                let (preview_url, media_type) = if url.contains("ugoira") {
+                    (listing.image_proxy_urls[1].clone(), "video")
+                } else {
+                    (url.clone(), "image")
+                };
+                MediaAttachment {
+                    id: id.clone(),
+                    media_type: media_type.to_string(),
+                    url: url.clone(),
+                    preview_url: preview_url.clone(),
+                    remote_url: None,
+                    preview_remote_url: None,
+                    text_url: None,
+                    description: "".to_string(),
+                    meta: serde_json::json!({}),
+                }
+            })
+            .collect();
 
         Self {
             id: id.clone(),
@@ -152,17 +165,7 @@ impl ActivityResponse {
                 name: "Pixiv".to_string(),
                 website: None,
             },
-            media_attachments: vec![MediaAttachment {
-                id: id,
-                media_type: media_type,
-                url: media_attachment_url,
-                preview_url: media_attachment_preview_url,
-                remote_url: None,
-                preview_remote_url: None,
-                text_url: None,
-                description: "".to_string(),
-                meta: serde_json::json!({}),
-            }],
+            media_attachments: media_attachments,
             account: Account {
                 id: listing.author_id,
                 display_name: listing.author_name,
@@ -221,19 +224,15 @@ pub async fn activity_handler(
         .to_utc()
         .format("%Y-%m-%dT%H:%M:%S%.3fZ")
         .to_string();
-    let index = (activity_id.index as usize).min(listing.image_proxy_urls.len().saturating_sub(1));
-    let image_url = listing.image_proxy_urls[index].clone();
-    let preview_url = if image_url.contains("ugoira") {
-        listing.image_proxy_urls[1].clone()
-    } else {
-        image_url.clone()
-    };
+    let index_max = listing.image_proxy_urls.len().saturating_sub(1);
+    let index = (activity_id.index as usize).min(index_max);
+    let index_end = (index + activity_id.offset_end.min(3) as usize).min(index_max);
 
     Ok(Json(ActivityResponse::new(
         activity_id.id.to_string(),
         created_at,
-        image_url,
-        preview_url,
+        index,
+        index_end,
         listing,
         host,
     )))

@@ -21,7 +21,8 @@ pub fn provider_name() -> String {
 }
 
 pub fn provider_url() -> String {
-    env::var("PROVIDER_URL").unwrap_or_else(|_| String::from("https://github.com/HazelTheWitch/phixiv"))
+    env::var("PROVIDER_URL")
+        .unwrap_or_else(|_| String::from("https://github.com/HazelTheWitch/phixiv"))
 }
 
 pub struct PhixivError(anyhow::Error);
@@ -46,10 +47,12 @@ pub struct ActivityId {
     pub language: String,
     pub id: u32,
     pub index: u16,
+    pub offset_end: u16,
 }
 
 impl From<u64> for ActivityId {
     fn from(value: u64) -> Self {
+        let offset_end = (value >> 56) & 0xFF;
         let lang_id = (value >> 48) & 0xFF;
         let id = (value >> 16) & 0xFFFFFFFF;
         let index = value & 0xFFFF;
@@ -67,6 +70,7 @@ impl From<u64> for ActivityId {
             language,
             id: id as u32,
             index: index as u16,
+            offset_end: offset_end as u16,
         }
     }
 }
@@ -82,6 +86,9 @@ impl From<ActivityId> for u64 {
             _ => 0,
         };
 
-        (lang_id as u64) << 48 | (value.id as u64) << 16 | (value.index as u64)
+        (value.offset_end.min(0xFF) as u64) << 56
+            | (lang_id as u64) << 48
+            | (value.id as u64) << 16
+            | (value.index as u64)
     }
 }

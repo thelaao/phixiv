@@ -25,17 +25,20 @@ async fn artwork_response(
     let path: ArtworkPath = raw_path.try_into()?;
 
     let state = state.read().await;
+    let image_index = path.image_index.unwrap_or_else(|| 0);
 
     let listing = ArtworkListing::get_listing(
         path.language.unwrap_or_else(|| "jp".to_string()),
         path.id,
-        path.image_index.unwrap_or_else(|| 0),
+        image_index,
         &host,
         &state.client,
     )
     .await?;
 
-    let artwork = listing.to_template(path.image_index, host).unwrap();
+    let artwork = listing
+        .to_template(image_index, path.image_index_end.unwrap_or_else(|| 0), host)
+        .unwrap();
 
     Ok((
         TypedHeader(CacheControl::new().with_no_cache()),
@@ -104,7 +107,8 @@ fn filter_bots(user_agent: UserAgent, raw_path: &RawArtworkPath) -> Option<Respo
                     .map(|l| format!("/{l}"))
                     .unwrap_or_else(|| String::from("")),
                 raw_path.id,
-                raw_path.image_index
+                raw_path
+                    .image_index
                     .as_ref()
                     .map(|i| format!("#{i}"))
                     .unwrap_or_else(|| String::from("")),
