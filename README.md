@@ -13,6 +13,7 @@ If you want a more compact embed, use c.phixiv.net or c.ppxiv.net, those will om
 ### Path Formats
 
 The following are valid paths for artworks, if there should be more embedding paths, please [open an issue](https://github.com/thelaao/phixiv/issues/new).
+To embed multiple images at once you can use a range for the :index parameter, e.g. 1-3 for the first three images, 4-6 for the next three and so on.
 
 ```text
 /artworks/:id
@@ -31,6 +32,7 @@ Here are some examples.
 | https://www.phixiv.net/artworks/124748386 | The same artwork |
 | https://www.phixiv.net/en/artworks/124748386 | The same artwork with tags in English translation |
 | https://www.phixiv.net/artworks/124748386/2 | The 2nd (not 3rd) image of the same artwork |
+| https://www.phixiv.net/artworks/124748386/1-3 | The first three images of the artwork |
 
 ### Discord Shortcut
 
