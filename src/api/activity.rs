@@ -22,14 +22,14 @@ pub struct ActivityParams {
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct ActivityResponse {
-    id: String,         // variable
-    url: String,        // variable
-    uri: String,        // variable same as url
-    created_at: String, // variable
+    id: String,
+    url: String,
+    uri: String,
+    created_at: String,
     edited_at: Option<serde_json::Value>,
     reblog: Option<serde_json::Value>,
     language: String,
-    content: String, // variable
+    content: String,
     spoiler_text: String,
     visibility: String,
     application: Application,
@@ -226,7 +226,7 @@ pub async fn activity_handler(
         .to_string();
     let index_max = listing.image_proxy_urls.len().saturating_sub(1);
     let index = (activity_id.index as usize).min(index_max);
-    let index_end = (index + activity_id.offset_end.min(3) as usize).min(index_max);
+    let index_end = (index + activity_id.offset_end.min(2) as usize).min(index_max);
 
     Ok(Json(ActivityResponse::new(
         activity_id.id.to_string(),
