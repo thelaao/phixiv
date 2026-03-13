@@ -8,6 +8,7 @@ pub mod state;
 
 use std::{env, net::SocketAddr, sync::Arc};
 
+use anyhow::Context;
 use api::api_router;
 use axum::{response::IntoResponse, routing::get, Json, Router};
 use oembed::oembed_handler;
@@ -26,13 +27,20 @@ use tracing_subscriber::{
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
-    dotenvy::dotenv().ok();
+    dotenvy::dotenv()?;
 
-    let addr: SocketAddr = format!(
-        "[::]:{}",
-        env::var("PORT").unwrap_or_else(|_| String::from("3000"))
-    )
-    .parse()?;
+    // backward compatibility
+    let port = match env::var("PORT") {
+        Ok(value) => {
+            eprintln!("Warning: use 'LISTENING_SOCKET' instead of 'PORT'.");
+            value.parse::<u16>().with_context(|| "Malformed 'PORT'.")?
+        }
+        Err(_) => 3000,
+    };
+    let addr = env::var("LISTENING_SOCKET")
+        .unwrap_or_else(|_| format!("[::]:{}", port))
+        .parse::<SocketAddr>()
+        .with_context(|| "Malformed 'LISTENING_SOCKET'.")?;
 
     let tracing_registry = tracing_subscriber::registry()
         .with(fmt::layer())
