@@ -10,6 +10,7 @@ use std::{env, net::SocketAddr, sync::Arc};
 
 use api::api_router;
 use axum::{response::IntoResponse, routing::get, Json, Router};
+use dotenvy::Error as DotenvyError;
 use oembed::oembed_handler;
 use proxy::proxy_router;
 use serde_json::json;
@@ -26,7 +27,11 @@ use tracing_subscriber::{
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
-    dotenvy::dotenv()?;
+    match dotenvy::dotenv() {
+        Ok(_) => (),
+        Err(DotenvyError::Io(e)) if e.kind() == std::io::ErrorKind::NotFound => {},
+        Err(e) => return Err(e.into()),
+    }
 
     let addr: SocketAddr = format!(
         "[::]:{}",
