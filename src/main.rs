@@ -30,17 +30,19 @@ async fn main() -> anyhow::Result<()> {
     dotenvy::dotenv()?;
 
     // backward compatibility
-    let port = match env::var("PORT") {
+    let port: Option<u16> = match env::var("PORT") {
         Ok(value) => {
             eprintln!("Warning: use 'LISTENING_SOCKET' instead of 'PORT'.");
-            value.parse::<u16>().with_context(|| "Malformed 'PORT'.")?
+            Some(value.parse::<u16>().with_context(|| "Malformed 'PORT'.")?)
         }
-        Err(_) => 3000,
+        Err(_) => None,
     };
     let mut addr = env::var("LISTENING_SOCKET")?
         .parse::<SocketAddr>()
         .with_context(|| "Malformed 'LISTENING_SOCKET'.")?;
-    addr.set_port(port);
+    if port.is_some() {
+        addr.set_port(port.unwrap());
+    }
 
     let tracing_registry = tracing_subscriber::registry()
         .with(fmt::layer())
