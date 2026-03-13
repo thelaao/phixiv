@@ -37,10 +37,10 @@ async fn main() -> anyhow::Result<()> {
         }
         Err(_) => 3000,
     };
-    let addr = env::var("LISTENING_SOCKET")
-        .unwrap_or_else(|_| format!("[::]:{}", port))
+    let mut addr = env::var("LISTENING_SOCKET")?
         .parse::<SocketAddr>()
         .with_context(|| "Malformed 'LISTENING_SOCKET'.")?;
+    addr.set_port(port);
 
     let tracing_registry = tracing_subscriber::registry()
         .with(fmt::layer())
