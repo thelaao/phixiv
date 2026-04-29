@@ -112,7 +112,11 @@ impl ActivityResponse {
             [
                 format!(
                     "<strong><a href=\"{}\">{}</a></strong>",
-                    listing.url, listing.title
+                    listing.url, listing.title,
+                ),
+                format!(
+                    "by <a href=\"https://www.pixiv.net/users/{}\">{}</a>",
+                    listing.author_id, listing.author_name,
                 ),
                 String::from(if listing.ai_generated {
                     "<strong>AI Generated</strong><br />"
