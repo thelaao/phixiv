@@ -1,36 +1,27 @@
-use std::sync::Arc;
+use axum::{extract::Query, Json};
+use serde::{Deserialize, Serialize};
 
-use axum::{
-    extract::{Host, Query, State},
-    Json,
-};
-use serde::Deserialize;
-use tokio::sync::RwLock;
-
-use crate::{helper::PhixivError, pixiv::ArtworkListing, state::PhixivState};
+use crate::helper::PhixivError;
 
 #[derive(Deserialize)]
 pub struct ArtworkInfoPath {
     pub language: Option<String>,
     pub id: String,
-    pub index: Option<usize>,
+}
+
+#[derive(Serialize, Clone)]
+pub struct APIResponse {
+    pub message: String,
 }
 
 pub(super) async fn artwork_info_handler(
-    State(state): State<Arc<RwLock<PhixivState>>>,
     Query(path): Query<ArtworkInfoPath>,
-    Host(host): Host,
-) -> Result<Json<ArtworkListing>, PhixivError> {
-    let state = state.read().await;
+) -> Result<Json<APIResponse>, PhixivError> {
+    let message = format!(
+        "The phixiv API is no longer available, you can call the Pixiv API directly, it has the same information. Example: https://www.pixiv.net/ajax/illust/{}?lang={}",
+        path.id,
+        path.language.unwrap_or_else(|| "jp".to_string())
+    );
 
-    Ok(Json(
-        ArtworkListing::get_listing(
-            path.language.unwrap_or_else(|| "jp".to_string()),
-            path.id,
-            path.index.unwrap_or_else(|| 0),
-            &host,
-            &state.client,
-        )
-        .await?,
-    ))
+    Ok(Json(APIResponse { message }))
 }

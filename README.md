@@ -38,14 +38,18 @@ Here are some examples.
 
 On Discord, instead of editing pixiv urls, typing `s/i/p` and hitting Enter could be a bit more quick. This command will replace `pixiv` with `ppxiv`. If there are multiple `i`'s in that message, you should use `s/pixiv/ppxiv` to shoot it accurately.
 
+### API
+
+The API at https://www.phixiv.net/api/info?id=:id is no longer available.
+Developers should call the Pixiv API directly, https://www.pixiv.net/ajax/illust/142030918 for general information and https://www.pixiv.net/ajax/illust/142030918/pages for the original image urls.
+
 ## Advanced Usages
 
-There are some APIs for developers or internal usage. It's recommended to read the source code before using them directly.
+There are some APIs for internal usage. It's recommended to read the source code before using them directly.
 
 | Path | Description |
 |:- |:- |
 | `/health` | Health check |
 | `/e/?n=:author_name&i=:author_id` | oEmbed-like API |
 | `/i/:path` | Proxy API |
-| `/api/info?id=:id&language=:language&index=:index` | Basic info (e.g., direct image links and tags) in JSON |
 | `/api/v1/statuses/:status_id` | Mastodon-like API |
