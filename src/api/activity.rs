@@ -1,4 +1,4 @@
-use std::sync::Arc;
+use std::{env, sync::Arc};
 
 use axum::{
     extract::{Host, Path, State},
@@ -210,6 +210,11 @@ pub async fn activity_handler(
     State(state): State<Arc<RwLock<PhixivState>>>,
     Host(host): Host,
 ) -> Result<Json<ActivityResponse>, PhixivError> {
+    let max_images: u16 = env::var("MAX_IMAGES")
+        .unwrap_or_else(|_| String::from("3"))
+        .parse::<u16>()
+        .unwrap_or_else(|_| 3)
+        .saturating_sub(1);
     let activity_id: u64 = path.id.parse()?;
     let activity_id = ActivityId::from(activity_id);
 
@@ -230,7 +235,7 @@ pub async fn activity_handler(
         .to_string();
     let index_max = listing.image_proxy_urls.len().saturating_sub(1);
     let index = (activity_id.index as usize).min(index_max);
-    let index_end = (index + activity_id.offset_end.min(2) as usize).min(index_max);
+    let index_end = (index + activity_id.offset_end.min(max_images) as usize).min(index_max);
 
     Ok(Json(ActivityResponse::new(
         activity_id.id.to_string(),
