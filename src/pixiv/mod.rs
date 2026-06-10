@@ -6,6 +6,8 @@ use cached::SizedCache;
 use fancy_regex::{Captures, Regex};
 use http::HeaderMap;
 use itertools::Itertools;
+use rand::prelude::IndexedRandom;
+use rand::rngs::ThreadRng;
 use reqwest::Client;
 use serde::{Deserialize, Serialize};
 
@@ -122,8 +124,11 @@ async fn ajax_request(
     client: &Client,
 ) -> anyhow::Result<AjaxResponse> {
     let mut ajax_headers = HeaderMap::with_capacity(2);
-    if let Ok(pixiv_cookie) = env::var("PIXIV_COOKIE") {
-        ajax_headers.append("Cookie", format!("PHPSESSID={}", pixiv_cookie).parse()?);
+    if let Ok(pixiv_cookies_raw) = env::var("PIXIV_COOKIE") {
+        let cookies: Vec<&str> = pixiv_cookies_raw.split(',').collect();
+        if let Some(chosen_cookie) = cookies.choose(&mut ThreadRng::default()) {
+            ajax_headers.append("Cookie", format!("PHPSESSID={}", chosen_cookie).parse()?);
+        }
     }
     ajax_headers.append("User-Agent", env::var("USER_AGENT").unwrap_or_else(|_| {
         "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36".to_string()
