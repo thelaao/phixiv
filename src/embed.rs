@@ -47,8 +47,14 @@ async fn artwork_response(
         .into_response())
 }
 
+#[derive(Deserialize)]
+pub struct ArtworkQuery {
+    pub page: Option<String>,
+}
+
 async fn artwork_handler(
     Path(path): Path<RawArtworkPath>,
+    Query(query): Query<ArtworkQuery>,
     State(state): State<Arc<RwLock<PhixivState>>>,
     TypedHeader(user_agent): TypedHeader<UserAgent>,
     Host(host): Host,
@@ -57,6 +63,15 @@ async fn artwork_handler(
         return Ok(resp);
     }
 
+    let path = if query.page.is_some() {
+        RawArtworkPath {
+            language: path.language,
+            id: path.id,
+            image_index: query.page,
+        }
+    } else {
+        path
+    };
     Ok(artwork_response(path, state, host).await?)
 }
 
