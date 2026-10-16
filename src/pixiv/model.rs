@@ -39,6 +39,8 @@ pub(super) struct AjaxBody {
     pub view_count: u32,
     #[serde(rename = "xRestrict")]
     pub x_restrict: u32,
+    #[serde(rename = "titleCaptionTranslation")]
+    pub title_caption_translatation: TitleCaptionTranslation,
 }
 
 #[derive(Debug, Deserialize)]
@@ -72,4 +74,12 @@ pub(super) struct UserIllust {
 pub(super) struct Urls {
     pub regular: Option<String>,
     pub original: Option<String>,
+}
+
+#[derive(Deserialize, Debug)]
+pub(super) struct TitleCaptionTranslation {
+    #[serde(rename = "workTitle")]
+    pub work_title: Option<String>,
+    #[serde(rename = "workCaption")]
+    pub work_caption: Option<String>,
 }

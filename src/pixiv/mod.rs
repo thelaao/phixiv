@@ -228,11 +228,29 @@ async fn cached_get_listing(
             })
             .collect::<Vec<String>>()
     };
-    let description = fix_links(ajax_response.body.description);
+    let title = if language == "en" {
+        ajax_response
+            .body
+            .title_caption_translatation
+            .work_title
+            .unwrap_or(ajax_response.body.title)
+    } else {
+        ajax_response.body.title
+    };
+    let raw_description = if language == "en" {
+        ajax_response
+            .body
+            .title_caption_translatation
+            .work_caption
+            .unwrap_or(ajax_response.body.description)
+    } else {
+        ajax_response.body.description
+    };
+    let description = fix_links(raw_description);
 
     Ok(ArtworkListing {
         image_proxy_urls,
-        title: ajax_response.body.title,
+        title: title,
         ai_generated,
         description: description,
         tags,
