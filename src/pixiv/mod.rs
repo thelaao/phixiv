@@ -228,11 +228,21 @@ async fn cached_get_listing(
             })
             .collect::<Vec<String>>()
     };
+    let translation = ajax_response.body.translation;
+    let auto_title = translation
+        .as_ref()
+        .and_then(|translation| translation.title.as_ref())
+        .map(|title| title.text.clone());
+    let auto_caption = translation
+        .as_ref()
+        .and_then(|translation| translation.caption.as_ref())
+        .map(|caption| caption.text.clone());
     let title = if language == "en" {
         ajax_response
             .body
             .title_caption_translatation
             .work_title
+            .or(auto_title)
             .unwrap_or(ajax_response.body.title)
     } else {
         ajax_response.body.title
@@ -242,6 +252,7 @@ async fn cached_get_listing(
             .body
             .title_caption_translatation
             .work_caption
+            .or(auto_caption)
             .unwrap_or(ajax_response.body.description)
     } else {
         ajax_response.body.description
@@ -268,6 +279,32 @@ async fn cached_get_listing(
         view_count: ajax_response.body.view_count,
         x_restrict: ajax_response.body.x_restrict,
     })
+}
+
+fn decode_html_entities(text: &str) -> String {
+    let re = Regex::new(r"&(?:#(\d+)|#[xX]([0-9a-fA-F]+)|(amp|lt|gt|quot|apos|nbsp));").unwrap();
+    re.replace_all(text, |caps: &Captures| {
+        let codepoint = if let Some(decimal) = caps.get(1) {
+            decimal.as_str().parse::<u32>().ok()
+        } else if let Some(hexadecimal) = caps.get(2) {
+            u32::from_str_radix(hexadecimal.as_str(), 16).ok()
+        } else {
+            return match caps.get(3).unwrap().as_str() {
+                "amp" => String::from("&"),
+                "lt" => String::from("<"),
+                "gt" => String::from(">"),
+                "quot" => String::from("\""),
+                "apos" => String::from("'"),
+                "nbsp" => String::from(" "),
+                _ => String::new(),
+            };
+        };
+        codepoint
+            .and_then(char::from_u32)
+            .map(String::from)
+            .unwrap_or_default()
+    })
+    .into_owned()
 }
 
 fn fix_links(description: String) -> String {
@@ -446,7 +483,7 @@ impl ArtworkListing {
             }
         }
 
-        Regex::new(r"<br\s*/?>")
+        let text = Regex::new(r"<br\s*/?>")
             .unwrap()
             .split(&full_string)
             .map(|x| {
@@ -455,6 +492,7 @@ impl ArtworkListing {
                 )
             })
             .collect::<Vec<String>>()
-            .join("\n")
+            .join("\n");
+        decode_html_entities(&text)
     }
 }
