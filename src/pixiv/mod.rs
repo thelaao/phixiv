@@ -228,15 +228,23 @@ async fn cached_get_listing(
             })
             .collect::<Vec<String>>()
     };
-    let translation = ajax_response.body.translation;
-    let auto_title = translation
-        .as_ref()
-        .and_then(|translation| translation.title.as_ref())
-        .map(|title| title.text.clone());
-    let auto_caption = translation
-        .as_ref()
-        .and_then(|translation| translation.caption.as_ref())
-        .map(|caption| caption.text.clone());
+    let use_auto_tl =
+        env::var("USE_AUTO_TL").unwrap_or_else(|_| String::from("false")) == "true";
+    let (auto_title, auto_caption) = if use_auto_tl {
+        let translation = ajax_response.body.translation;
+        (
+            translation
+                .as_ref()
+                .and_then(|translation| translation.title.as_ref())
+                .map(|title| title.text.clone()),
+            translation
+                .as_ref()
+                .and_then(|translation| translation.caption.as_ref())
+                .map(|caption| caption.text.clone()),
+        )
+    } else {
+        (None, None)
+    };
     let title = if language == "en" {
         ajax_response
             .body
