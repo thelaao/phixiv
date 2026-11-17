@@ -48,12 +48,14 @@ pub struct ActivityId {
     pub id: u32,
     pub index: u16,
     pub offset_end: u16,
+    pub tl: bool,
 }
 
 impl From<u64> for ActivityId {
     fn from(value: u64) -> Self {
         let offset_end = (value >> 56) & 0xFF;
-        let lang_id = (value >> 48) & 0xFF;
+        let tl = (value >> 55) & 1 == 1;
+        let lang_id = (value >> 48) & 0x7F;
         let id = (value >> 16) & 0xFFFFFFFF;
         let index = value & 0xFFFF;
 
@@ -71,6 +73,7 @@ impl From<u64> for ActivityId {
             id: id as u32,
             index: index as u16,
             offset_end: offset_end as u16,
+            tl,
         }
     }
 }
@@ -87,8 +90,49 @@ impl From<ActivityId> for u64 {
         };
 
         (value.offset_end.min(0xFF) as u64) << 56
+            | (value.tl as u64) << 55
             | (lang_id as u64) << 48
             | (value.id as u64) << 16
             | (value.index as u64)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::ActivityId;
+
+    #[test]
+    fn legacy_activity_id_is_unchanged() {
+        // Encoding produced before the tl flag existed: en (1), id 124748386, index 2.
+        let legacy_id = (1u64) << 48 | (124748386u64) << 16 | 2;
+
+        let activity_id = ActivityId::from(legacy_id);
+
+        assert_eq!(activity_id.language, "en");
+        assert_eq!(activity_id.id, 124748386);
+        assert_eq!(activity_id.index, 2);
+        assert!(!activity_id.tl);
+        assert_eq!(u64::from(activity_id), legacy_id);
+    }
+
+    #[test]
+    fn activity_id_round_trips_with_tl() {
+        for (language, tl) in [("jp", true), ("en", true), ("zh_tw", false)] {
+            let activity_id = ActivityId {
+                language: language.to_string(),
+                id: 124748386,
+                index: 1,
+                offset_end: 2,
+                tl,
+            };
+
+            let decoded = ActivityId::from(u64::from(activity_id));
+
+            assert_eq!(decoded.language, language);
+            assert_eq!(decoded.id, 124748386);
+            assert_eq!(decoded.index, 1);
+            assert_eq!(decoded.offset_end, 2);
+            assert_eq!(decoded.tl, tl);
+        }
     }
 }

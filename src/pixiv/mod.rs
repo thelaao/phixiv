@@ -111,6 +111,7 @@ pub struct ArtworkListing {
     pub illust_id: String,
     pub profile_image_url: Option<String>,
     pub language: String,
+    pub tl: bool,
     pub bookmark_count: u32,
     pub like_count: u32,
     pub comment_count: u32,
@@ -149,12 +150,13 @@ async fn ajax_request(
 #[cached(
     ty = "SizedCache<String, ArtworkListing>",
     create = "{ SizedCache::with_size(1024) }",
-    convert = r#"{ format!("{}_{}", language, illust_id) }"#,
+    convert = r#"{ format!("{}_{}_{}", language, illust_id, tl) }"#,
     result = true
 )]
 async fn cached_get_listing(
     language: String,
     illust_id: String,
+    tl: bool,
     host: &str,
     client: &Client,
 ) -> anyhow::Result<ArtworkListing> {
@@ -228,9 +230,7 @@ async fn cached_get_listing(
             })
             .collect::<Vec<String>>()
     };
-    let use_auto_tl =
-        env::var("USE_AUTO_TL").unwrap_or_else(|_| String::from("false")) == "true";
-    let (auto_title, auto_caption) = if use_auto_tl {
+    let (auto_title, auto_caption) = if tl {
         let translation = ajax_response.body.translation;
         (
             translation
@@ -245,22 +245,28 @@ async fn cached_get_listing(
     } else {
         (None, None)
     };
-    let title = if language == "en" {
+    let title = if tl {
+        auto_title
+            .or(ajax_response.body.title_caption_translatation.work_title)
+            .unwrap_or(ajax_response.body.title)
+    } else if language == "en" {
         ajax_response
             .body
             .title_caption_translatation
             .work_title
-            .or(auto_title)
             .unwrap_or(ajax_response.body.title)
     } else {
         ajax_response.body.title
     };
-    let raw_description = if language == "en" {
+    let raw_description = if tl {
+        auto_caption
+            .or(ajax_response.body.title_caption_translatation.work_caption)
+            .unwrap_or(ajax_response.body.description)
+    } else if language == "en" {
         ajax_response
             .body
             .title_caption_translatation
             .work_caption
-            .or(auto_caption)
             .unwrap_or(ajax_response.body.description)
     } else {
         ajax_response.body.description
@@ -281,6 +287,7 @@ async fn cached_get_listing(
         illust_id: clean_illust_id,
         profile_image_url,
         language,
+        tl,
         bookmark_count: ajax_response.body.bookmark_count,
         like_count: ajax_response.body.like_count,
         comment_count: ajax_response.body.comment_count,
@@ -328,10 +335,11 @@ impl ArtworkListing {
         language: String,
         illust_id: String,
         image_index: usize,
+        tl: bool,
         host: &str,
         client: &Client,
     ) -> anyhow::Result<Self> {
-        let mut listing = cached_get_listing(language, illust_id, host, client).await?;
+        let mut listing = cached_get_listing(language, illust_id, tl, host, client).await?;
         if image_index != 0 {
             listing.url = format!("{}#{}", listing.url, image_index)
         }
@@ -393,6 +401,7 @@ impl ArtworkListing {
             id: self.illust_id.parse()?,
             index: index as u16,
             offset_end: (index_end - index) as u16,
+            tl: self.tl,
         });
 
         let site_name = provider_name();

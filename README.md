@@ -33,6 +33,7 @@ Here are some examples.
 | https://www.phixiv.net/en/artworks/124748386 | The same artwork with tags in English translation |
 | https://www.phixiv.net/artworks/124748386/2 | The 2nd (not 3rd) image of the same artwork |
 | https://www.phixiv.net/artworks/124748386/1-3 | The first three images of the artwork |
+| https://www.phixiv.net/en/artworks/124748386?tl | The same artwork using Pixiv's auto-translated title and description (works with any language prefix) |
 
 ### Discord Shortcut
 

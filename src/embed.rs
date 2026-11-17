@@ -21,6 +21,7 @@ async fn artwork_response(
     raw_path: RawArtworkPath,
     state: Arc<RwLock<PhixivState>>,
     host: String,
+    tl: bool,
 ) -> anyhow::Result<Response> {
     let path: ArtworkPath = raw_path.try_into()?;
 
@@ -31,6 +32,7 @@ async fn artwork_response(
         path.language.unwrap_or_else(|| "jp".to_string()),
         path.id,
         image_index,
+        tl,
         &host,
         &state.client,
     )
@@ -50,6 +52,7 @@ async fn artwork_response(
 #[derive(Deserialize)]
 pub struct ArtworkQuery {
     pub page: Option<String>,
+    pub tl: Option<String>,
 }
 
 async fn artwork_handler(
@@ -63,6 +66,7 @@ async fn artwork_handler(
         return Ok(resp);
     }
 
+    let tl = query.tl.is_some();
     let path = if query.page.is_some() {
         RawArtworkPath {
             language: path.language,
@@ -72,7 +76,7 @@ async fn artwork_handler(
     } else {
         path
     };
-    Ok(artwork_response(path, state, host).await?)
+    Ok(artwork_response(path, state, host, tl).await?)
 }
 
 #[derive(Deserialize)]
@@ -102,7 +106,7 @@ async fn member_illust_handler(
         return Ok(resp);
     }
 
-    Ok(artwork_response(raw_path, state, host).await?)
+    Ok(artwork_response(raw_path, state, host, false).await?)
 }
 
 fn filter_bots(user_agent: UserAgent, raw_path: &RawArtworkPath) -> Option<Response> {

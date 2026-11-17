@@ -223,6 +223,7 @@ pub async fn activity_handler(
         activity_id.language,
         activity_id.id.to_string(),
         activity_id.index as usize,
+        activity_id.tl,
         &host,
         &state.client,
     )
